@@ -107,14 +107,22 @@
             position: relative;
         }
         .entry-top {
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex; justify-content: space-between; align-items: center; gap: 8px;
         }
-        .entry-meta { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-sub); }
+        .entry-meta { 
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--text-sub); 
+        }
+        .entry-meta strong, .entry-meta span, .entry-loc {
+            white-space: nowrap; /* 글자가 세로로 찌그러지는 현상 방지 */
+        }
         .entry-loc {
             background: var(--chip-bg); padding: 3px 8px; border-radius: 6px;
             font-size: 11px; color: var(--text-main); font-weight: 500; display: inline-flex; align-items: center; gap: 3px;
         }
-        .entry-del { background: none; border: none; color: #FF3B30; font-size: 12px; cursor: pointer; }
+        .entry-del { 
+            background: none; border: none; color: #FF3B30; font-size: 12px; cursor: pointer;
+            white-space: nowrap; flex-shrink: 0;
+        }
         
         .entry-content {
             font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
@@ -345,7 +353,7 @@
     let activeDateStr = getLocalIsoDate(todayObj);
 
     let journalDB = JSON.parse(localStorage.getItem('myJournalDB') || "[]");
-    let pendingMediaFiles = []; // { file, type, previewUrl, base64, thumbBase64 }
+    let pendingMediaFiles = [];
     let isRecording = false;
     let recognition = null;
     let selectedMood = "";
@@ -355,15 +363,22 @@
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
+    // 긴 날짜 문자열(Sat Dec 30 1899 10:35:00...)에서 '10:35'만 추출
+    function formatDisplayTime(timeStr) {
+        if (!timeStr) return '';
+        const match = String(timeStr).match(/(\d{1,2}:\d{2})/);
+        return match ? match[1] : timeStr;
+    }
+
     // 초기 실행
     function init() {
         setupChips();
         renderCalendar();
         renderTimeline();
-        syncFromCloud(); // 클라우드 데이터 백그라운드 동기화
+        syncFromCloud();
     }
 
-    // 구글 시트에서 전체 일기 동기화 (최초 1회 & 갱신)
+    // 구글 시트에서 전체 일기 동기화
     function syncFromCloud() {
         if (!GOOGLE_APP_URL) return;
         fetch(GOOGLE_APP_URL)
@@ -378,7 +393,7 @@
             }).catch(e => console.log("동기화 대기중: ", e));
     }
 
-    // 캘린더 렌더링 (0.01초)
+    // 캘린더 렌더링
     function renderCalendar() {
         document.getElementById('calMonthTitle').innerText = `${currentYear}년 ${currentMonth + 1}월`;
         const grid = document.getElementById('calendarGrid');
@@ -388,19 +403,16 @@
         const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
         const todayStr = getLocalIsoDate(todayObj);
 
-        // 빈 칸
         for (let i = 0; i < firstDay; i++) {
             grid.innerHTML += `<div></div>`;
         }
 
-        // 날짜 채우기
         for (let day = 1; day <= lastDate; day++) {
             const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const entries = journalDB.filter(e => e.date === dateStr);
             const isToday = (dateStr === todayStr) ? 'today' : '';
             const isSelected = (dateStr === activeDateStr) ? 'selected' : '';
 
-            // 대표 마이크로 썸네일 (구글 시트/로컬에 캐시된 2KB 초미니 사진)
             let thumbHtml = '';
             const entryWithThumb = entries.find(e => e.microThumb);
             if (entryWithThumb && entryWithThumb.microThumb) {
@@ -440,7 +452,7 @@
         renderTimeline();
     }
 
-    // 하단 타임라인 렌더링
+    // 하단 타임라인 렌더링 (시간 및 칩 정렬 적용)
     function renderTimeline() {
         const parts = activeDateStr.split('-');
         const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -493,7 +505,7 @@
                 <div class="entry-card">
                     <div class="entry-top">
                         <div class="entry-meta">
-                            <strong>${entry.time || ''}</strong>
+                            <strong>${formatDisplayTime(entry.time)}</strong>
                             ${moodHtml} ${weatherHtml} ${locHtml}
                         </div>
                         <button class="entry-del" onclick="deleteEntry('${entry.id}')">삭제</button>
@@ -540,7 +552,7 @@
         if (isRecording) stopSpeech();
     }
 
-    // 실시간 위치 가져오기 (OpenStreetMap 역지오코딩)
+    // 실시간 위치 가져오기
     function fetchCurrentLocation() {
         if (!navigator.geolocation) { alert("위치 권한을 지원하지 않는 환경입니다."); return; }
         const locInput = document.getElementById('locInput');
@@ -564,7 +576,7 @@
         }, { timeout: 7000 });
     }
 
-    // 음성 인식 (Web Speech API)
+    // 음성 인식
     function toggleSpeech() {
         if (isRecording) { stopSpeech(); }
         else { startSpeech(); }
@@ -626,7 +638,7 @@
                 pendingMediaFiles.push({
                     file, type: 'video',
                     thumb: thumb,
-                    base64: thumb // 영상은 초기 재생 전까지 썸네일로 대체
+                    base64: thumb
                 });
             }
         }
@@ -639,7 +651,6 @@
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    // 1200px 압축
                     const maxDim = 1200;
                     let w = img.width, h = img.height;
                     if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
@@ -650,7 +661,6 @@
                     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
 
-                    // 40x40 캘린더용 초미니 썸네일 (2KB)
                     const thumbCanvas = document.createElement('canvas');
                     thumbCanvas.width = 44; thumbCanvas.height = 44;
                     const minSide = Math.min(img.width, img.height);
@@ -702,7 +712,7 @@
         renderPreviewThumbs();
     }
 
-    // 일기 저장 및 백그라운드 구글 드라이브 업로드
+    // 일기 저장
     async function saveEntry() {
         const content = document.getElementById('journalContent').value.trim();
         if (!content && pendingMediaFiles.length === 0) {
@@ -718,13 +728,11 @@
         const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         const newId = 'entry_' + Date.now();
 
-        // 캘린더용 초미니 썸네일 추출 (첫 번째 미디어 기준)
         let microThumb = "";
         if (pendingMediaFiles.length > 0 && pendingMediaFiles[0].thumb) {
             microThumb = pendingMediaFiles[0].thumb;
         }
 
-        // 로컬 UI용 엔트리 생성 (0초 딜레이 저장)
         const newEntry = {
             id: newId,
             date: activeDateStr,
@@ -737,17 +745,14 @@
             microThumb: microThumb
         };
 
-        // 1. 로컬 저장소 즉시 반영
         journalDB.unshift(newEntry);
         localStorage.setItem('myJournalDB', JSON.stringify(journalDB));
         renderCalendar();
         renderTimeline();
         closeEntryModal();
 
-        // 2. 구글 드라이브 & 시트 백그라운드 전송
         if (GOOGLE_APP_URL) {
             try {
-                // 구글 시트 행 저장 요청
                 await fetch(GOOGLE_APP_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -783,7 +788,7 @@
         }
     }
 
-    // 키워드 고속 검색 (Client-side 0.001초)
+    // 키워드 고속 검색
     function toggleSearch(show) {
         const modal = document.getElementById('searchModal');
         if (show) {
@@ -809,13 +814,12 @@
         );
 
         matched.forEach(e => {
-            // 캘린더 셀 하이라이트
             const cell = document.querySelector(`.cal-cell[data-date="${e.date}"]`);
             if (cell) cell.classList.add('has-search');
 
             resBox.innerHTML += `
                 <div class="search-item" onclick="selectDate('${e.date}'); toggleSearch(false);">
-                    <strong>${e.date} (${e.time})</strong>: ${e.content.substring(0, 30)}...
+                    <strong>${e.date} (${formatDisplayTime(e.time)})</strong>: ${e.content.substring(0, 30)}...
                 </div>
             `;
         });
