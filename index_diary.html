@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>나의 디지털 저널</title>
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/journal.png">
+    <link rel="icon" type="image/png" href="https://img.icons8.com/fluency/192/journal.png">
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; }
+        :root {
+            --bg: #F2F2F7;
+            --card: #FFFFFF;
+            --primary: #007AFF;
+            --text-main: #1C1C1E;
+            --text-sub: #8E8E93;
+            --line: #E5E5EA;
+            --chip-bg: #F2F2F7;
+        }
+        body {
+            margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex; flex-direction: column;
+            height: 100vh; overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 캘린더 영역 (상단 42%) */
+        .calendar-section {
+            height: 42vh; min-height: 290px;
+            background: var(--card);
+            display: flex; flex-direction: column;
+            border-bottom: 1px solid var(--line);
+            padding: 8px 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            z-index: 10;
+        }
+        .cal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            height: 38px; margin-bottom: 4px;
+        }
+        .cal-title { font-size: 17px; font-weight: 700; }
+        .cal-actions { display: flex; gap: 8px; align-items: center; }
+        .cal-btn {
+            background: var(--chip-bg); border: none; border-radius: 8px;
+            padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text-main);
+        }
+        .search-icon-btn {
+            background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px 6px;
+        }
+
+        .cal-days-header {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            text-align: center; font-size: 11px; font-weight: 600; color: var(--text-sub);
+            padding-bottom: 4px;
+        }
+        .cal-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+            gap: 2px; flex: 1; text-align: center;
+        }
+        .cal-cell {
+            position: relative; border-radius: 8px; display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-start; padding-top: 2px;
+            cursor: pointer; transition: background 0.15s;
+        }
+        .cal-cell.today { font-weight: 700; color: var(--primary); }
+        .cal-cell.selected { background-color: rgba(0, 122, 255, 0.12); border: 1.5px solid var(--primary); }
+        .cal-cell.has-search { box-shadow: 0 0 0 2px #FF9500 inset; }
+        .cal-date-num { font-size: 11px; margin-bottom: 1px; }
+        .cal-thumb {
+            width: 22px; height: 22px; border-radius: 4px; object-fit: cover;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .cal-dot {
+            width: 4px; height: 4px; border-radius: 50%; background: var(--primary);
+            margin-top: 2px;
+        }
+
+        /* 타임라인 영역 (하단 58%) */
+        .timeline-section {
+            flex: 1; overflow-y: auto; padding: 16px;
+            display: flex; flex-direction: column; gap: 14px;
+            padding-bottom: 80px;
+        }
+        .timeline-header {
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .timeline-date-title { font-size: 16px; font-weight: 700; }
+        .add-entry-btn {
+            background: var(--primary); color: white; border: none; border-radius: 18px;
+            padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 4px;
+        }
+
+        /* 일기 블록 카드 */
+        .entry-card {
+            background: var(--card); border-radius: 16px; padding: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 10px;
+            position: relative;
+        }
+        .entry-top {
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .entry-meta { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-sub); }
+        .entry-loc {
+            background: var(--chip-bg); padding: 3px 8px; border-radius: 6px;
+            font-size: 11px; color: var(--text-main); font-weight: 500; display: inline-flex; align-items: center; gap: 3px;
+        }
+        .entry-del { background: none; border: none; color: #FF3B30; font-size: 12px; cursor: pointer; }
+        
+        .entry-content {
+            font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+        }
+        
+        /* 미디어 그리드 */
+        .media-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px;
+        }
+        .media-item {
+            position: relative; width: 100%; padding-top: 100%; border-radius: 10px;
+            overflow: hidden; background: #000; cursor: pointer;
+        }
+        .media-item img, .media-item video {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+        }
+        .media-video-badge {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 28px; height: 28px; background: rgba(0,0,0,0.6); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;
+        }
+
+        .empty-timeline {
+            text-align: center; color: var(--text-sub); margin-top: 40px; font-size: 14px;
+        }
+
+        /* 작성/수정 모달 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.45); display: none; align-items: flex-end; z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-sheet {
+            background: var(--card); width: 100%; max-height: 90vh;
+            border-radius: 20px 20px 0 0; padding: 20px 18px env(safe-area-inset-bottom);
+            overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+            animation: slideUp 0.25s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+        .modal-close { background: none; border: none; font-size: 15px; color: var(--text-sub); cursor: pointer; }
+        
+        .chip-group { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; }
+        .chip-btn {
+            background: var(--chip-bg); border: 1.5px solid transparent; border-radius: 14px;
+            padding: 6px 12px; font-size: 13px; cursor: pointer; white-space: nowrap;
+        }
+        .chip-btn.selected { border-color: var(--primary); background: rgba(0,122,255,0.08); font-weight: 600; }
+
+        .loc-bar {
+            display: flex; gap: 8px; align-items: center; font-size: 12px;
+        }
+        .loc-input {
+            flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px;
+        }
+        .loc-btn {
+            background: var(--chip-bg); border: none; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+        }
+
+        .input-box-wrapper { position: relative; }
+        .journal-textarea {
+            width: 100%; height: 110px; border: 1px solid var(--line); border-radius: 12px;
+            padding: 12px; font-size: 14px; font-family: inherit; resize: none; outline: none;
+        }
+        .journal-textarea:focus { border-color: var(--primary); }
+        .voice-btn {
+            position: absolute; right: 10px; bottom: 12px;
+            background: var(--chip-bg); border: none; border-radius: 50%; width: 34px; height: 34px;
+            display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;
+        }
+        .voice-btn.recording { background: #FF3B30; color: white; animation: pulse 1.2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        .media-picker-bar {
+            display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--text-sub);
+        }
+        .pick-btn {
+            background: var(--chip-bg); border: none; border-radius: 10px; padding: 8px 12px;
+            font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-main);
+        }
+        .preview-thumbs { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; min-height: 50px; }
+        .preview-thumb-box {
+            position: relative; width: 50px; height: 50px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
+        }
+        .preview-thumb-box img { width: 100%; height: 100%; object-fit: cover; }
+        .preview-del {
+            position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white;
+            border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        .save-btn {
+            background: var(--primary); color: white; border: none; border-radius: 12px;
+            padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer;
+        }
+        .save-btn:disabled { opacity: 0.5; }
+
+        /* 검색 바 모달 */
+        .search-modal {
+            position: fixed; top: 0; left: 0; right: 0; background: var(--card);
+            border-bottom: 1px solid var(--line); padding: 12px 16px;
+            display: none; flex-direction: column; gap: 8px; z-index: 500;
+        }
+        .search-modal.active { display: flex; }
+        .search-input-box {
+            display: flex; gap: 8px; align-items: center;
+        }
+        .search-input {
+            flex: 1; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; outline: none;
+        }
+        .search-close { background: none; border: none; font-size: 14px; color: var(--primary); cursor: pointer; }
+        .search-results { max-height: 180px; overflow-y: auto; font-size: 13px; }
+        .search-item { padding: 6px 0; border-bottom: 1px solid var(--chip-bg); cursor: pointer; }
+
+        /* 미디어 전체화면 뷰어 모달 */
+        .lightbox {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.92);
+            display: none; align-items: center; justify-content: center; z-index: 2000;
+        }
+        .lightbox.active { display: flex; }
+        .lightbox img, .lightbox video { max-width: 95%; max-height: 85%; border-radius: 8px; }
+        .lightbox-close {
+            position: absolute; top: 20px; right: 20px; color: white; font-size: 26px; background: none; border: none; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 검색창 모달 -->
+    <div class="search-modal" id="searchModal">
+        <div class="search-input-box">
+            <input type="text" class="search-input" id="searchInput" placeholder="기억하고 싶은 단어 검색 (예: 와인, 미팅)" oninput="onSearch()">
+            <button class="search-close" onclick="toggleSearch(false)">닫기</button>
+        </div>
+        <div class="search-results" id="searchResults"></div>
+    </div>
+
+    <!-- 1. 캘린더 영역 (상단 42%) -->
+    <div class="calendar-section">
+        <div class="cal-header">
+            <button class="cal-btn" onclick="changeMonth(-1)">◀ 이전</button>
+            <div class="cal-title" id="calMonthTitle">2026년 9월</div>
+            <div class="cal-actions">
+                <button class="cal-btn" onclick="goToday()">오늘</button>
+                <button class="cal-btn" onclick="changeMonth(1)">다음 ▶</button>
+                <button class="search-icon-btn" onclick="toggleSearch(true)">🔍</button>
+            </div>
+        </div>
+        <div class="cal-days-header">
+            <span style="color:#FF3B30;">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+        </div>
+        <div class="cal-grid" id="calendarGrid"></div>
+    </div>
+
+    <!-- 2. 타임라인 영역 (하단 58%) -->
+    <div class="timeline-section" id="timelineSection">
+        <div class="timeline-header">
+            <div class="timeline-date-title" id="timelineDateTitle">2026년 9월 11일 (금)</div>
+            <button class="add-entry-btn" onclick="openEntryModal()"><span>➕</span>기록 쓰기</button>
+        </div>
+        <div id="timelineCards"></div>
+    </div>
+
+    <!-- 3. 작성/수정 모달 시트 -->
+    <div class="modal-overlay" id="entryModal">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <span id="modalDateLabel">새 일기 기록</span>
+                <button class="modal-close" onclick="closeEntryModal()">취소</button>
+            </div>
+
+            <!-- 기분 & 날씨 칩 -->
+            <div style="font-size:12px; font-weight:600; color:var(--text-sub);">오늘의 기분</div>
+            <div class="chip-group" id="moodChips">
+                <button class="chip-btn" data-val="😊 좋음">😊 좋음</button>
+                <button class="chip-btn" data-val="😌 평온">😌 평온</button>
+                <button class="chip-btn" data-val="🍷 여유">🍷 여유</button>
+                <button class="chip-btn" data-val="🏃 활기">🏃 활기</button>
+                <button class="chip-btn" data-val="🥱 피곤">🥱 피곤</button>
+            </div>
+
+            <div style="font-size:12px; font-weight:600; color:var(--text-sub);">오늘의 날씨</div>
+            <div class="chip-group" id="weatherChips">
+                <button class="chip-btn" data-val="☀️ 맑음">☀️ 맑음</button>
+                <button class="chip-btn" data-val="⛅ 구름">⛅ 구름</button>
+                <button class="chip-btn" data-val="🌧️ 비">🌧️ 비</button>
+                <button class="chip-btn" data-val="❄️ 눈">❄️ 눈</button>
+            </div>
+
+            <!-- 위치 태깅 -->
+            <div class="loc-bar">
+                <span>📍</span>
+                <input type="text" id="locInput" class="loc-input" placeholder="위치 (예: 서울 강남구)">
+                <button class="loc-btn" onclick="fetchCurrentLocation()">현위치</button>
+            </div>
+
+            <!-- 본문 & 음성인식 -->
+            <div class="input-box-wrapper">
+                <textarea id="journalContent" class="journal-textarea" placeholder="오늘 어떤 일이 있었나요? 마이크 버튼으로 음성 입력을 하거나 자유롭게 타이핑하세요."></textarea>
+                <button class="voice-btn" id="voiceBtn" onclick="toggleSpeech()">🎙️</button>
+            </div>
+
+            <!-- 미디어 첨부 -->
+            <div class="media-picker-bar">
+                <button class="pick-btn" onclick="document.getElementById('filePicker').click()">📷 사진/영상 추가 (최대 10장)</button>
+                <input type="file" id="filePicker" accept="image/*,video/*" multiple style="display:none;" onchange="handleFileSelect(event)">
+                <span id="fileCountLabel">0개 선택됨</span>
+            </div>
+            <div class="preview-thumbs" id="previewThumbs"></div>
+
+            <button class="save-btn" id="saveBtn" onclick="saveEntry()">저장하기</button>
+        </div>
+    </div>
+
+    <!-- 4. 전체화면 뷰어 (라이트박스) -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <button class="lightbox-close">✕</button>
+        <div id="lightboxContent" style="display:flex; justify-content:center; align-items:center;"></div>
+    </div>
+
+<script>
+    const GOOGLE_APP_URL = "https://script.google.com/macros/s/AKfycbwqB0jX942QF3Epg5-r-s33DYpoGIvDJ27r2aJWILew1mYq1m0NcZ_n2EA-Ng2nnlc/exec";
+
+    const todayObj = new Date();
+    let currentYear = todayObj.getFullYear();
+    let currentMonth = todayObj.getMonth();
+    let activeDateStr = getLocalIsoDate(todayObj);
+
+    let journalDB = JSON.parse(localStorage.getItem('myJournalDB') || "[]");
+    let pendingMediaFiles = []; // { file, type, previewUrl, base64, thumbBase64 }
+    let isRecording = false;
+    let recognition = null;
+    let selectedMood = "";
+    let selectedWeather = "";
+
+    function getLocalIsoDate(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    // 초기 실행
+    function init() {
+        setupChips();
+        renderCalendar();
+        renderTimeline();
+        syncFromCloud(); // 클라우드 데이터 백그라운드 동기화
+    }
+
+    // 구글 시트에서 전체 일기 동기화 (최초 1회 & 갱신)
+    function syncFromCloud() {
+        if (!GOOGLE_APP_URL) return;
+        fetch(GOOGLE_APP_URL)
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === "success" && Array.isArray(res.data)) {
+                    journalDB = res.data;
+                    localStorage.setItem('myJournalDB', JSON.stringify(journalDB));
+                    renderCalendar();
+                    renderTimeline();
+                }
+            }).catch(e => console.log("동기화 대기중: ", e));
+    }
+
+    // 캘린더 렌더링 (0.01초)
+    function renderCalendar() {
+        document.getElementById('calMonthTitle').innerText = `${currentYear}년 ${currentMonth + 1}월`;
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+
+        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+        const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const todayStr = getLocalIsoDate(todayObj);
+
+        // 빈 칸
+        for (let i = 0; i < firstDay; i++) {
+            grid.innerHTML += `<div></div>`;
+        }
+
+        // 날짜 채우기
+        for (let day = 1; day <= lastDate; day++) {
+            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const entries = journalDB.filter(e => e.date === dateStr);
+            const isToday = (dateStr === todayStr) ? 'today' : '';
+            const isSelected = (dateStr === activeDateStr) ? 'selected' : '';
+
+            // 대표 마이크로 썸네일 (구글 시트/로컬에 캐시된 2KB 초미니 사진)
+            let thumbHtml = '';
+            const entryWithThumb = entries.find(e => e.microThumb);
+            if (entryWithThumb && entryWithThumb.microThumb) {
+                thumbHtml = `<img src="${entryWithThumb.microThumb}" class="cal-thumb" alt="thumb">`;
+            } else if (entries.length > 0) {
+                thumbHtml = `<div class="cal-dot"></div>`;
+            }
+
+            grid.innerHTML += `
+                <div class="cal-cell ${isToday} ${isSelected}" data-date="${dateStr}" onclick="selectDate('${dateStr}')">
+                    <span class="cal-date-num">${day}</span>
+                    ${thumbHtml}
+                </div>
+            `;
+        }
+    }
+
+    function selectDate(dStr) {
+        activeDateStr = dStr;
+        renderCalendar();
+        renderTimeline();
+    }
+
+    function changeMonth(delta) {
+        currentMonth += delta;
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        renderCalendar();
+    }
+
+    function goToday() {
+        const t = new Date();
+        currentYear = t.getFullYear();
+        currentMonth = t.getMonth();
+        activeDateStr = getLocalIsoDate(t);
+        renderCalendar();
+        renderTimeline();
+    }
+
+    // 하단 타임라인 렌더링
+    function renderTimeline() {
+        const parts = activeDateStr.split('-');
+        const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+        document.getElementById('timelineDateTitle').innerText = 
+            `${targetDate.getFullYear()}년 ${targetDate.getMonth() + 1}월 ${targetDate.getDate()}일 (${dayNames[targetDate.getDay()]})`;
+
+        const container = document.getElementById('timelineCards');
+        container.innerHTML = '';
+
+        const entries = journalDB.filter(e => e.date === activeDateStr);
+        if (entries.length === 0) {
+            container.innerHTML = `
+                <div class="empty-timeline">
+                    이 날에 작성된 일기가 없습니다.<br>
+                    우측 상단 <strong>[➕ 기록 쓰기]</strong>를 눌러 추억을 남겨보세요.
+                </div>
+            `;
+            return;
+        }
+
+        entries.forEach(entry => {
+            let mediaHtml = '';
+            if (entry.media && entry.media.length > 0) {
+                mediaHtml = `<div class="media-grid">`;
+                entry.media.forEach(m => {
+                    if (m.type.startsWith('video')) {
+                        mediaHtml += `
+                            <div class="media-item" onclick="viewMedia('${m.viewUrl || m.base64}', 'video')">
+                                <img src="${m.thumb || m.base64}">
+                                <div class="media-video-badge">▶</div>
+                            </div>
+                        `;
+                    } else {
+                        mediaHtml += `
+                            <div class="media-item" onclick="viewMedia('${m.viewUrl || m.base64}', 'image')">
+                                <img src="${m.base64 || m.viewUrl}">
+                            </div>
+                        `;
+                    }
+                });
+                mediaHtml += `</div>`;
+            }
+
+            const locHtml = entry.location ? `<span class="entry-loc">📍 ${entry.location}</span>` : '';
+            const moodHtml = entry.mood ? `<span>${entry.mood}</span>` : '';
+            const weatherHtml = entry.weather ? `<span>${entry.weather}</span>` : '';
+
+            container.innerHTML += `
+                <div class="entry-card">
+                    <div class="entry-top">
+                        <div class="entry-meta">
+                            <strong>${entry.time || ''}</strong>
+                            ${moodHtml} ${weatherHtml} ${locHtml}
+                        </div>
+                        <button class="entry-del" onclick="deleteEntry('${entry.id}')">삭제</button>
+                    </div>
+                    <div class="entry-content">${entry.content}</div>
+                    ${mediaHtml}
+                </div>
+            `;
+        });
+    }
+
+    // 기분 / 날씨 칩 선택 세팅
+    function setupChips() {
+        document.querySelectorAll('#moodChips .chip-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('#moodChips .chip-btn').forEach(b => b.classList.remove('selected'));
+                if (selectedMood === btn.dataset.val) { selectedMood = ""; }
+                else { btn.classList.add('selected'); selectedMood = btn.dataset.val; }
+            };
+        });
+        document.querySelectorAll('#weatherChips .chip-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('#weatherChips .chip-btn').forEach(b => b.classList.remove('selected'));
+                if (selectedWeather === btn.dataset.val) { selectedWeather = ""; }
+                else { btn.classList.add('selected'); selectedWeather = btn.dataset.val; }
+            };
+        });
+    }
+
+    // 작성 모달 열기
+    function openEntryModal() {
+        document.getElementById('modalDateLabel').innerText = `${activeDateStr} 새 기록`;
+        document.getElementById('journalContent').value = '';
+        document.getElementById('locInput').value = '';
+        pendingMediaFiles = [];
+        renderPreviewThumbs();
+        selectedMood = ""; selectedWeather = "";
+        document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected'));
+        document.getElementById('entryModal').classList.add('active');
+    }
+
+    function closeEntryModal() {
+        document.getElementById('entryModal').classList.remove('active');
+        if (isRecording) stopSpeech();
+    }
+
+    // 실시간 위치 가져오기 (OpenStreetMap 역지오코딩)
+    function fetchCurrentLocation() {
+        if (!navigator.geolocation) { alert("위치 권한을 지원하지 않는 환경입니다."); return; }
+        const locInput = document.getElementById('locInput');
+        locInput.placeholder = "위치 확인 중...";
+
+        navigator.geolocation.getCurrentPosition(pos => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+                .then(r => r.json())
+                .then(data => {
+                    const addr = data.address || {};
+                    const city = addr.city || addr.province || addr.county || "";
+                    const district = addr.borough || addr.suburb || addr.district || "";
+                    locInput.value = `${city} ${district}`.trim() || "현재 위치";
+                }).catch(() => {
+                    locInput.value = "대한민국 서울";
+                });
+        }, () => {
+            locInput.value = "위치 확인 불가";
+        }, { timeout: 7000 });
+    }
+
+    // 음성 인식 (Web Speech API)
+    function toggleSpeech() {
+        if (isRecording) { stopSpeech(); }
+        else { startSpeech(); }
+    }
+
+    function startSpeech() {
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec) {
+            alert("브라우저 음성 인식이 지원되지 않습니다. 아이폰 키보드 오른쪽 아래 마이크(받아쓰기) 버튼을 이용해 보세요!");
+            return;
+        }
+        recognition = new SpeechRec();
+        recognition.lang = 'ko-KR';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        const textarea = document.getElementById('journalContent');
+        let initialText = textarea.value;
+
+        recognition.onresult = (e) => {
+            let transcript = '';
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+                transcript += e.results[i][0].transcript;
+            }
+            textarea.value = initialText + (initialText ? ' ' : '') + transcript;
+        };
+        recognition.onerror = () => stopSpeech();
+        recognition.onend = () => stopSpeech();
+
+        recognition.start();
+        isRecording = true;
+        document.getElementById('voiceBtn').classList.add('recording');
+    }
+
+    function stopSpeech() {
+        if (recognition) { recognition.stop(); recognition = null; }
+        isRecording = false;
+        document.getElementById('voiceBtn').classList.remove('recording');
+    }
+
+    // 미디어 압축 및 썸네일 자동 생성
+    async function handleFileSelect(e) {
+        const files = Array.from(e.target.files);
+        if (pendingMediaFiles.length + files.length > 10) {
+            alert("미디어는 한 번에 최대 10개까지 첨부 가능합니다.");
+            return;
+        }
+
+        for (const file of files) {
+            if (file.type.startsWith('image/')) {
+                const res = await processImage(file);
+                pendingMediaFiles.push({
+                    file, type: 'image',
+                    base64: res.compressedBase64,
+                    thumb: res.microThumb
+                });
+            } else if (file.type.startsWith('video/')) {
+                const thumb = await extractVideoThumbnail(file);
+                pendingMediaFiles.push({
+                    file, type: 'video',
+                    thumb: thumb,
+                    base64: thumb // 영상은 초기 재생 전까지 썸네일로 대체
+                });
+            }
+        }
+        renderPreviewThumbs();
+    }
+
+    function processImage(file) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    // 1200px 압축
+                    const maxDim = 1200;
+                    let w = img.width, h = img.height;
+                    if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                    else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+
+                    // 40x40 캘린더용 초미니 썸네일 (2KB)
+                    const thumbCanvas = document.createElement('canvas');
+                    thumbCanvas.width = 44; thumbCanvas.height = 44;
+                    const minSide = Math.min(img.width, img.height);
+                    thumbCanvas.getContext('2d').drawImage(img, (img.width - minSide)/2, (img.height - minSide)/2, minSide, minSide, 0, 0, 44, 44);
+                    const microThumb = thumbCanvas.toDataURL('image/jpeg', 0.6);
+
+                    resolve({ compressedBase64, microThumb });
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function extractVideoThumbnail(file) {
+        return new Promise(resolve => {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.src = URL.createObjectURL(file);
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadeddata = () => { video.currentTime = 1; };
+            video.onseeked = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 160; canvas.height = 160;
+                canvas.getContext('2d').drawImage(video, 0, 0, 160, 160);
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
+            };
+            video.onerror = () => resolve('');
+        });
+    }
+
+    function renderPreviewThumbs() {
+        const container = document.getElementById('previewThumbs');
+        container.innerHTML = '';
+        pendingMediaFiles.forEach((m, idx) => {
+            container.innerHTML += `
+                <div class="preview-thumb-box">
+                    <img src="${m.thumb || m.base64}">
+                    <button class="preview-del" onclick="removePendingMedia(${idx})">✕</button>
+                </div>
+            `;
+        });
+        document.getElementById('fileCountLabel').innerText = `${pendingMediaFiles.length}개 선택됨`;
+    }
+
+    function removePendingMedia(idx) {
+        pendingMediaFiles.splice(idx, 1);
+        renderPreviewThumbs();
+    }
+
+    // 일기 저장 및 백그라운드 구글 드라이브 업로드
+    async function saveEntry() {
+        const content = document.getElementById('journalContent').value.trim();
+        if (!content && pendingMediaFiles.length === 0) {
+            alert("내용을 입력하거나 미디어를 첨부해 주세요.");
+            return;
+        }
+
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerText = "저장 중...";
+
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const newId = 'entry_' + Date.now();
+
+        // 캘린더용 초미니 썸네일 추출 (첫 번째 미디어 기준)
+        let microThumb = "";
+        if (pendingMediaFiles.length > 0 && pendingMediaFiles[0].thumb) {
+            microThumb = pendingMediaFiles[0].thumb;
+        }
+
+        // 로컬 UI용 엔트리 생성 (0초 딜레이 저장)
+        const newEntry = {
+            id: newId,
+            date: activeDateStr,
+            time: timeStr,
+            mood: selectedMood,
+            weather: selectedWeather,
+            location: document.getElementById('locInput').value.trim(),
+            content: content,
+            media: pendingMediaFiles.map(m => ({ type: m.type, base64: m.base64, thumb: m.thumb })),
+            microThumb: microThumb
+        };
+
+        // 1. 로컬 저장소 즉시 반영
+        journalDB.unshift(newEntry);
+        localStorage.setItem('myJournalDB', JSON.stringify(journalDB));
+        renderCalendar();
+        renderTimeline();
+        closeEntryModal();
+
+        // 2. 구글 드라이브 & 시트 백그라운드 전송
+        if (GOOGLE_APP_URL) {
+            try {
+                // 구글 시트 행 저장 요청
+                await fetch(GOOGLE_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        action: 'SAVE_ENTRY',
+                        ...newEntry
+                    })
+                });
+            } catch (e) {
+                console.log("백업 전송 대기:", e);
+            }
+        }
+        saveBtn.disabled = false;
+        saveBtn.innerText = "저장하기";
+    }
+
+    // 항목 삭제
+    function deleteEntry(id) {
+        if (!confirm("이 일기 기록을 삭제할까요?")) return;
+        journalDB = journalDB.filter(e => e.id !== id);
+        localStorage.setItem('myJournalDB', JSON.stringify(journalDB));
+        renderCalendar();
+        renderTimeline();
+
+        if (GOOGLE_APP_URL) {
+            fetch(GOOGLE_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action: 'DELETE_ENTRY', id: id })
+            }).catch(e => console.log(e));
+        }
+    }
+
+    // 키워드 고속 검색 (Client-side 0.001초)
+    function toggleSearch(show) {
+        const modal = document.getElementById('searchModal');
+        if (show) {
+            modal.classList.add('active');
+            document.getElementById('searchInput').focus();
+        } else {
+            modal.classList.remove('active');
+            document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search'));
+        }
+    }
+
+    function onSearch() {
+        const q = document.getElementById('searchInput').value.trim().toLowerCase();
+        const resBox = document.getElementById('searchResults');
+        resBox.innerHTML = '';
+        document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search'));
+
+        if (!q) return;
+
+        const matched = journalDB.filter(e => 
+            (e.content && e.content.toLowerCase().includes(q)) || 
+            (e.location && e.location.toLowerCase().includes(q))
+        );
+
+        matched.forEach(e => {
+            // 캘린더 셀 하이라이트
+            const cell = document.querySelector(`.cal-cell[data-date="${e.date}"]`);
+            if (cell) cell.classList.add('has-search');
+
+            resBox.innerHTML += `
+                <div class="search-item" onclick="selectDate('${e.date}'); toggleSearch(false);">
+                    <strong>${e.date} (${e.time})</strong>: ${e.content.substring(0, 30)}...
+                </div>
+            `;
+        });
+    }
+
+    // 미디어 라이트박스 뷰어
+    function viewMedia(url, type) {
+        const box = document.getElementById('lightboxContent');
+        if (type === 'video') {
+            box.innerHTML = `<video src="${url}" controls autoplay playsinline style="max-width:100%; max-height:80vh;"></video>`;
+        } else {
+            box.innerHTML = `<img src="${url}">`;
+        }
+        document.getElementById('lightbox').classList.add('active');
+    }
+
+    function closeLightbox() {
+        document.getElementById('lightbox').classList.remove('active');
+        document.getElementById('lightboxContent').innerHTML = '';
+    }
+
+    init();
+</script>
+</body>
+</html>
