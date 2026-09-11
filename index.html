@@ -51,16 +51,19 @@
         }
         .pull-refresh-indicator.pulling { opacity: 1; transition: none; }
         .pull-refresh-indicator.refreshing {
-            opacity: 1; transform: translateY(12px); transition: transform 0.25s ease;
+            opacity: 1; transform: translateY(14px); transition: transform 0.25s ease;
         }
         .pull-icon { display: inline-block; transition: transform 0.2s ease; font-size: 14px; }
         .pull-refresh-indicator.ready .pull-icon { transform: rotate(180deg); }
         .pull-refresh-indicator.refreshing .pull-icon { animation: spin 0.8s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* 1. 캘린더 영역 (여유로운 상단 마진과 넉넉한 레이아웃) */
+        /* 1. 캘린더 영역 (상단 마진 충분히 확보 & 하단 여백 군더더기 제거) */
         .calendar-section {
-            padding: calc(20px + env(safe-area-inset-top)) 16px 14px 16px;
+            padding-top: calc(30px + env(safe-area-inset-top));
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-bottom: 8px;
             background: var(--card);
             display: flex; flex-direction: column;
             border-bottom: 1px solid var(--line);
@@ -72,7 +75,7 @@
             display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 16px;
         }
-        .cal-title { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; }
+        .cal-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
         .cal-actions { display: flex; gap: 8px; align-items: center; }
         .cal-btn {
             background: var(--chip-bg); border: none; border-radius: 10px;
@@ -88,18 +91,20 @@
             padding-bottom: 8px;
         }
         
-        /* 캘린더 그리드: 50px 행 높이로 여유 공간 확보 */
+        /* 캘린더 그리드: 주차 수만큼만 유연하게 생성 (빈 6번째 줄 공백 제거) */
         .cal-grid {
-            display: grid; grid-template-columns: repeat(7, 1fr);
-            grid-template-rows: repeat(6, 50px);
-            gap: 4px; text-align: center;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-auto-rows: 46px;
+            gap: 2px;
+            text-align: center;
         }
         .cal-cell {
-            position: relative; border-radius: 10px; display: flex; flex-direction: column;
-            align-items: center; justify-content: flex-start; padding: 4px 2px;
+            position: relative; border-radius: 9px; display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-start; padding: 3px 1px;
             border: 1.5px solid transparent;
             cursor: pointer; transition: background 0.15s, border-color 0.15s;
-            height: 50px;
+            height: 46px;
         }
         .cal-cell.today .cal-date-num { 
             color: var(--primary); font-weight: 800;
@@ -110,25 +115,25 @@
         }
         .cal-cell.has-search { box-shadow: 0 0 0 2px #FF9500 inset; }
         .cal-date-num { 
-            font-size: 12px; line-height: 14px; margin-bottom: 3px; font-weight: 500; 
+            font-size: 12px; line-height: 14px; margin-bottom: 2px; font-weight: 500; 
         }
         
-        /* 사진 썸네일: 박스 안에 안정적으로 안착 */
+        /* 사진 썸네일 */
         .cal-thumb {
-            width: 22px; height: 22px; border-radius: 5px; object-fit: cover;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            width: 20px; height: 20px; border-radius: 4px; object-fit: cover;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
         }
         .cal-dot {
             width: 5px; height: 5px; border-radius: 50%; background: var(--primary);
-            margin-top: 5px;
+            margin-top: 4px;
         }
 
-        /* 2. 타임라인 영역 (자연스러운 단독 스크롤) */
+        /* 2. 타임라인 영역 (달력 바로 아래로 자연스럽게 배치) */
         .timeline-section {
             flex: 1;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            padding: 18px 16px;
+            padding: 16px;
             padding-bottom: calc(50px + env(safe-area-inset-bottom));
             display: flex; flex-direction: column; gap: 14px;
         }
@@ -310,7 +315,7 @@
         <div class="search-results" id="searchResults"></div>
     </div>
 
-    <!-- 1. 캘린더 영역 (여유 있는 상단 뷰) -->
+    <!-- 1. 캘린더 영역 -->
     <div class="calendar-section" id="calSection">
         <div class="cal-header">
             <button class="cal-btn" onclick="changeMonth(-1)">◀ 이전</button>
@@ -327,7 +332,7 @@
         <div class="cal-grid" id="calendarGrid"></div>
     </div>
 
-    <!-- 2. 타임라인 영역 (스크롤 전용) -->
+    <!-- 2. 타임라인 영역 -->
     <div class="timeline-section" id="timelineSection">
         <div class="timeline-header">
             <div class="timeline-date-title" id="timelineDateTitle">2026년 9월 11일 (금)</div>
@@ -436,7 +441,6 @@
         });
     }
 
-    // 🔄 당겨서 새로고침 세팅
     function setupPullToRefresh() {
         const ind = document.getElementById('pullIndicator');
         const txt = document.getElementById('pullText');
