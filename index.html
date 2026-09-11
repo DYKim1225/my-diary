@@ -113,7 +113,7 @@
             display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--text-sub); 
         }
         .entry-meta strong, .entry-meta span, .entry-loc {
-            white-space: nowrap; /* 글자가 세로로 찌그러지는 현상 방지 */
+            white-space: nowrap;
         }
         .entry-loc {
             background: var(--chip-bg); padding: 3px 8px; border-radius: 6px;
@@ -356,6 +356,7 @@
     let pendingMediaFiles = [];
     let isRecording = false;
     let recognition = null;
+    let speechTimer = null;
     let selectedMood = "";
     let selectedWeather = "";
 
@@ -363,7 +364,7 @@
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
-    // 긴 날짜 문자열(Sat Dec 30 1899 10:35:00...)에서 '10:35'만 추출
+    // 긴 날짜 문자열(Sat Dec 30 1899 10:35:00...)에서 '10:35' 추출
     function formatDisplayTime(timeStr) {
         if (!timeStr) return '';
         const match = String(timeStr).match(/(\d{1,2}:\d{2})/);
@@ -452,7 +453,7 @@
         renderTimeline();
     }
 
-    // 하단 타임라인 렌더링 (시간 및 칩 정렬 적용)
+    // 하단 타임라인 렌더링
     function renderTimeline() {
         const parts = activeDateStr.split('-');
         const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -576,45 +577,78 @@
         }, { timeout: 7000 });
     }
 
-    // 음성 인식
+    // 음성 인식 (iOS 사파리 UI 프리징 및 오디오 락 방지)
     function toggleSpeech() {
-        if (isRecording) { stopSpeech(); }
-        else { startSpeech(); }
+        if (isRecording) {
+            stopSpeech();
+        } else {
+            startSpeech();
+        }
     }
 
     function startSpeech() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) {
-            alert("브라우저 음성 인식이 지원되지 않습니다. 아이폰 키보드 오른쪽 아래 마이크(받아쓰기) 버튼을 이용해 보세요!");
+            alert("키보드 우측 하단의 마이크(받아쓰기 🎙️)를 탭하시면 가장 정확하게 입력됩니다!");
+            document.getElementById('journalContent').focus();
             return;
         }
-        recognition = new SpeechRec();
-        recognition.lang = 'ko-KR';
-        recognition.continuous = true;
-        recognition.interimResults = true;
 
-        const textarea = document.getElementById('journalContent');
-        let initialText = textarea.value;
-
-        recognition.onresult = (e) => {
-            let transcript = '';
-            for (let i = e.resultIndex; i < e.results.length; i++) {
-                transcript += e.results[i][0].transcript;
+        try {
+            if (recognition) {
+                recognition.abort();
             }
-            textarea.value = initialText + (initialText ? ' ' : '') + transcript;
-        };
-        recognition.onerror = () => stopSpeech();
-        recognition.onend = () => stopSpeech();
+            recognition = new SpeechRec();
+            recognition.lang = 'ko-KR';
+            recognition.continuous = false; // 먹통 차단: 단일 발화 모드
+            recognition.interimResults = false;
 
-        recognition.start();
-        isRecording = true;
-        document.getElementById('voiceBtn').classList.add('recording');
+            const textarea = document.getElementById('journalContent');
+            const voiceBtn = document.getElementById('voiceBtn');
+
+            recognition.onstart = () => {
+                isRecording = true;
+                voiceBtn.classList.add('recording');
+                // 10초 타임아웃 안전 종료
+                speechTimer = setTimeout(() => {
+                    stopSpeech();
+                }, 10000);
+            };
+
+            recognition.onresult = (e) => {
+                const transcript = e.results[0][0].transcript;
+                textarea.value = (textarea.value ? textarea.value + ' ' : '') + transcript;
+                stopSpeech();
+            };
+
+            recognition.onerror = (e) => {
+                console.log("음성인식 알림:", e.error);
+                stopSpeech();
+            };
+
+            recognition.onend = () => {
+                stopSpeech();
+            };
+
+            recognition.start();
+        } catch (err) {
+            console.log("음성인식 시작 오류:", err);
+            stopSpeech();
+        }
     }
 
     function stopSpeech() {
-        if (recognition) { recognition.stop(); recognition = null; }
+        if (speechTimer) {
+            clearTimeout(speechTimer);
+            speechTimer = null;
+        }
+        if (recognition) {
+            try { recognition.stop(); } catch(e) {}
+            recognition = null;
+        }
         isRecording = false;
-        document.getElementById('voiceBtn').classList.remove('recording');
+        const voiceBtn = document.getElementById('voiceBtn');
+        if (voiceBtn) voiceBtn.classList.remove('recording');
     }
 
     // 미디어 압축 및 썸네일 자동 생성
