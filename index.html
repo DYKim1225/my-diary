@@ -38,7 +38,7 @@
             overscroll-behavior: none;
         }
 
-        /* 당겨서 새로고침 인디케이터 */
+        /* 🔄 당겨서 새로고침 인디케이터 */
         .pull-refresh-indicator {
             position: absolute;
             top: env(safe-area-inset-top, 0px);
@@ -360,7 +360,8 @@
                 <button class="modal-close" onclick="closeEntryModal()">취소</button>
             </div>
 
-            <div style="font-size:12px; font-weight:600; color:var(--text-sub);">오늘의 기분</div>
+            <!-- 기분 & 날씨 (선택 항목으로 자유롭게 입력 가능) -->
+            <div style="font-size:12px; font-weight:600; color:var(--text-sub);">오늘의 기분 (선택)</div>
             <div class="chip-group" id="moodChips">
                 <button class="chip-btn" data-val="😊 좋음">😊 좋음</button>
                 <button class="chip-btn" data-val="😌 평온">😌 평온</button>
@@ -369,7 +370,7 @@
                 <button class="chip-btn" data-val="🥱 피곤">🥱 피곤</button>
             </div>
 
-            <div style="font-size:12px; font-weight:600; color:var(--text-sub);">오늘의 날씨</div>
+            <div style="font-size:12px; font-weight:600; color:var(--text-sub);">오늘의 날씨 (선택)</div>
             <div class="chip-group" id="weatherChips">
                 <button class="chip-btn" data-val="☀️ 맑음">☀️ 맑음</button>
                 <button class="chip-btn" data-val="⛅ 구름">⛅ 구름</button>
@@ -436,7 +437,7 @@
         setupChips();
         renderCalendar();
         renderTimeline();
-        syncFromCloud();
+        syncFromCloud(); // 앱 구동 즉시 무캐시 최신 데이터 동기화
         setupPullToRefresh();
         setupIOSScrollReset();
     }
@@ -509,13 +510,48 @@
         });
     }
 
+    // 🔄 사파리 GET 캐시 원천 차단 및 스마트 병합(누락 방지)
     function syncFromCloud(callback) {
         if (!GOOGLE_APP_URL) { if (callback) callback(); return; }
-        fetch(GOOGLE_APP_URL)
+        
+        // 타임스탬프로 사파리 브라우저 캐시 우회
+        const cacheBusterUrl = GOOGLE_APP_URL + (GOOGLE_APP_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+        
+        fetch(cacheBusterUrl, { cache: 'no-store' })
             .then(res => res.json())
             .then(res => {
                 if (res.status === "success" && Array.isArray(res.data)) {
-                    journalDB = res.data;
+                    const cloudList = res.data;
+                    const mergedMap = new Map();
+
+                    // 1. 클라우드 최신 데이터 등록
+                    cloudList.forEach(item => {
+                        if (item && item.id) mergedMap.set(item.id, item);
+                    });
+
+                    // 2. 로컬에만 있고 클라우드에 아직 반영 안 된 최신 일기 보존
+                    journalDB.forEach(item => {
+                        if (item && item.id) {
+                            if (!mergedMap.has(item.id)) {
+                                mergedMap.set(item.id, item);
+                            } else {
+                                // 클라우드에 사진 base64가 생략되어 있다면 로컬의 미리보기 사진 유지
+                                const cloudEntry = mergedMap.get(item.id);
+                                if ((!cloudEntry.media || cloudEntry.media.length === 0) && item.media && item.media.length > 0) {
+                                    cloudEntry.media = item.media;
+                                }
+                            }
+                        }
+                    });
+
+                    // 최신 일기 순(역순) 정렬
+                    journalDB = Array.from(mergedMap.values());
+                    journalDB.sort((a, b) => {
+                        const dtA = (a.date || '') + ' ' + (a.time || '');
+                        const dtB = (b.date || '') + ' ' + (b.time || '');
+                        return dtB.localeCompare(dtA);
+                    });
+
                     saveToLocalStorage(journalDB);
                     renderCalendar();
                     renderTimeline();
@@ -652,16 +688,26 @@
     function setupChips() {
         document.querySelectorAll('#moodChips .chip-btn').forEach(btn => {
             btn.onclick = () => {
-                document.querySelectorAll('#moodChips .chip-btn').forEach(b => b.classList.remove('selected'));
-                if (selectedMood === btn.dataset.val) { selectedMood = ""; }
-                else { btn.classList.add('selected'); selectedMood = btn.dataset.val; }
+                if (selectedMood === btn.dataset.val) {
+                    selectedMood = "";
+                    btn.classList.remove('selected');
+                } else {
+                    document.querySelectorAll('#moodChips .chip-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedMood = btn.dataset.val;
+                }
             };
         });
         document.querySelectorAll('#weatherChips .chip-btn').forEach(btn => {
             btn.onclick = () => {
-                document.querySelectorAll('#weatherChips .chip-btn').forEach(b => b.classList.remove('selected'));
-                if (selectedWeather === btn.dataset.val) { selectedWeather = ""; }
-                else { btn.classList.add('selected'); selectedWeather = btn.dataset.val; }
+                if (selectedWeather === btn.dataset.val) {
+                    selectedWeather = "";
+                    btn.classList.remove('selected');
+                } else {
+                    document.querySelectorAll('#weatherChips .chip-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedWeather = btn.dataset.val;
+                }
             };
         });
     }
@@ -778,7 +824,6 @@
         if (voiceBtn) voiceBtn.classList.remove('recording');
     }
 
-    // ⚡ 초경량 이미지 압축 (모바일 용량 한계 완벽 대응)
     async function handleFileSelect(e) {
         const files = Array.from(e.target.files);
         if (!files.length) return;
@@ -822,7 +867,6 @@
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    // 900px, 0.68 품질로 압축하여 1장당 80~120KB 수준으로 최적화
                     const maxDim = 900;
                     let w = img.width, h = img.height;
                     if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
@@ -884,14 +928,12 @@
         renderPreviewThumbs();
     }
 
-    // 🛡️ 로컬 스토리지 안전 저장 (5MB 한도 초과 시 자동 다이어트 자가치유)
     function saveToLocalStorage(data) {
         try {
             localStorage.setItem('myJournalDB', JSON.stringify(data));
         } catch (e) {
-            console.warn("로컬 저장소 용량 초과 감지! 캐시 최적화 실행:", e);
+            console.warn("로컬 저장소 캐시 압축 실행:", e);
             try {
-                // 최근 3건을 제외한 과거 일기의 무거운 base64는 제거하고 썸네일/텍스트만 유지
                 const slimData = data.map((entry, idx) => {
                     if (idx > 2 && entry.media) {
                         return {
@@ -908,11 +950,16 @@
         }
     }
 
-    // 💾 일기 저장 (멈춤 없는 즉시 반응 & 백그라운드 클라우드 전송)
+    // 💾 일기 저장 (기분/날씨 미선택 시에도 완벽 저장)
     async function saveEntry() {
         const content = document.getElementById('journalContent').value.trim();
-        if (!content && pendingMediaFiles.length === 0) {
-            alert("내용을 입력하거나 미디어를 첨부해 주세요.");
+        const hasMedia = pendingMediaFiles.length > 0;
+        const hasMood = !!selectedMood;
+        const hasWeather = !!selectedWeather;
+
+        // 글, 사진, 기분/날씨 중 하나라도 있으면 저장 허용
+        if (!content && !hasMedia && !hasMood && !hasWeather) {
+            alert("일기 내용(글, 사진, 기분/날씨 중 하나)을 입력해 주세요.");
             return;
         }
 
@@ -934,24 +981,20 @@
                 id: newId,
                 date: activeDateStr,
                 time: timeStr,
-                mood: selectedMood,
-                weather: selectedWeather,
+                mood: selectedMood || "",
+                weather: selectedWeather || "",
                 location: document.getElementById('locInput').value.trim(),
                 content: content,
                 media: pendingMediaFiles.map(m => ({ type: m.type, base64: m.base64, thumb: m.thumb })),
                 microThumb: microThumb
             };
 
-            // 1. 로컬 메모리 & 화면 즉시 갱신 (0.01초 소요)
             journalDB.unshift(newEntry);
             saveToLocalStorage(journalDB);
             renderCalendar();
             renderTimeline();
-
-            // 2. 모달 즉각 닫기 (사용자 화면 멈춤 원천 차단)
             closeEntryModal();
 
-            // 3. 구글 클라우드 백업은 백그라운드에서 조용히 전송
             if (GOOGLE_APP_URL) {
                 fetch(GOOGLE_APP_URL, {
                     method: 'POST',
@@ -961,11 +1004,11 @@
                         action: 'SAVE_ENTRY',
                         ...newEntry
                     })
-                }).catch(e => console.log("백그라운드 동기화 대기:", e));
+                }).catch(e => console.log("백그라운드 전송 대기:", e));
             }
         } catch (err) {
-            console.error("저장 처리 오류:", err);
-            alert("저장 처리 중 문제가 발생했습니다. 화면을 새로고침해 주세요.");
+            console.error("저장 오류:", err);
+            alert("저장 처리 중 오류가 발생했습니다.");
             closeEntryModal();
         } finally {
             saveBtn.disabled = false;
