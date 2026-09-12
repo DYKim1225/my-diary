@@ -5,38 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <title>나의 루틴</title>
-    <meta name="apple-mobile-web-app-title" content="나의 루틴">
-    
-    <link rel="apple-touch-icon" sizes="180x180" href="https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=512&h=512&q=80">
-    <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=512&h=512&q=80">
-
+    <title>나의 일기</title>
+    <meta name="apple-mobile-web-app-title" content="나의 일기">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=512&h=512&q=80">
+    <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=512&h=512&q=80">
     <style>
-        * {
-            box-sizing: border-box;
-            touch-action: manipulation;
-        }
+        * { box-sizing: border-box; touch-action: manipulation; }
         :root {
-            --bg-color: #F2F2F7;
-            --card-bg: #FFFFFF;
-            --primary-color: #34C759;
+            --bg: #F2F2F7;
+            --card: #FFFFFF;
+            --primary: #007AFF;
             --text-main: #1C1C1E;
             --text-sub: #8E8E93;
-            --gray-btn: #E5E5EA;
-            --gray-light: #F2F2F7;
-            --nav-bg: rgba(255, 255, 255, 0.9);
+            --line: #E5E5EA;
+            --chip-bg: #F2F2F7;
+            --cal-board-bg: #F6F7F9;
+            --cal-board-border: #E8EAED;
         }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background-color: var(--bg-color); 
-            margin: 0; 
-            padding: calc(18px + env(safe-area-inset-top)) 14px 100px 14px; 
-            color: var(--text-main); 
-            -webkit-tap-highlight-color: transparent; 
+        
+        html, body {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            height: 100dvh;
+            margin: 0; padding: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex; flex-direction: column;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
         }
 
+        /* 🔄 당겨서 새로고침 인디케이터 */
         .pull-refresh-indicator {
-            position: fixed;
+            position: absolute;
             top: env(safe-area-inset-top, 0px);
             left: 0; right: 0;
             height: 40px;
@@ -44,422 +48,429 @@
             font-size: 12px; font-weight: 600; color: var(--text-sub);
             transform: translateY(-100%);
             transition: transform 0.2s ease, opacity 0.2s ease;
-            z-index: 999; pointer-events: none; opacity: 0;
+            z-index: 50; pointer-events: none; opacity: 0;
         }
         .pull-refresh-indicator.pulling { opacity: 1; transition: none; }
         .pull-refresh-indicator.refreshing {
-            opacity: 1; transform: translateY(12px); transition: transform 0.25s ease;
+            opacity: 1; transform: translateY(14px); transition: transform 0.25s ease;
         }
         .pull-icon { display: inline-block; transition: transform 0.2s ease; font-size: 14px; }
         .pull-refresh-indicator.ready .pull-icon { transform: rotate(180deg); }
         .pull-refresh-indicator.refreshing .pull-icon { animation: spin 0.8s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        .header { text-align: center; margin-bottom: 20px; position: relative; }
-        .header h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px 0; }
-        
-        .streak-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background-color: rgba(255, 149, 0, 0.12);
-            color: #FF9500;
-            font-size: 13px;
-            font-weight: 700;
-            padding: 4px 12px;
-            border-radius: 20px;
-            margin-bottom: 8px;
+        /* 1. 캘린더 영역 */
+        .calendar-section {
+            padding-top: calc(26px + env(safe-area-inset-top));
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-bottom: 12px;
+            background: var(--card);
+            display: flex; flex-direction: column;
+            border-bottom: 1px solid var(--line);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+            z-index: 10;
+            flex-shrink: 0;
+        }
+        .cal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 18px;
+        }
+        .cal-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+        .cal-actions { display: flex; gap: 8px; align-items: center; }
+        .cal-btn {
+            background: var(--chip-bg); border: none; border-radius: 10px;
+            padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-main);
+        }
+        .search-icon-btn {
+            background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px 6px;
         }
 
-        .week-nav { display: flex; justify-content: center; align-items: center; gap: 16px; }
-        .week-nav-btn { background: var(--gray-btn); border: none; font-size: 14px; color: var(--text-main); border-radius: 12px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
-        .week-nav-text { font-size: 14px; color: var(--text-sub); font-weight: 500; min-width: 70px; }
-        .return-today { position: absolute; right: 0; top: 0; font-size: 12px; color: var(--primary-color); font-weight: 600; padding: 6px; cursor: pointer; display: none; }
-        
-        .section-card { 
-            background-color: var(--card-bg); 
-            border-radius: 20px; 
-            padding: 20px 10px; 
-            margin-bottom: 18px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
+        .cal-board {
+            background-color: var(--cal-board-bg);
+            border: 1px solid var(--cal-board-border);
+            border-radius: 18px;
+            padding: 12px 8px 8px 8px;
         }
-        .section-title { 
-            font-size: 16px; font-weight: 700; margin-bottom: 16px; margin-top: 0; 
-            padding: 0 4px;
-            display: flex; justify-content: space-between; align-items: baseline; 
-        }
-        .date-range { font-size: 12px; font-weight: normal; color: var(--text-sub); }
-        
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 2px; }
-        .check-btn { 
-            background-color: var(--gray-btn); border: none; border-radius: 16px; 
-            padding: 16px 12px; font-size: 14px; font-weight: 600; color: var(--text-sub); 
-            display: flex; flex-direction: column; align-items: center; gap: 8px; 
-            transition: transform 0.1s, background-color 0.15s; cursor: pointer; 
-            user-select: none; -webkit-user-select: none;
-        }
-        .check-btn span.icon { font-size: 28px; }
-        .check-btn.active { background-color: var(--primary-color); color: white; transform: scale(0.97); }
 
-        .week-view { 
-            display: grid; 
-            grid-template-columns: repeat(7, 1fr); 
-            gap: 2px; 
-            width: 100%;
+        .cal-days-header {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            text-align: center; font-size: 11px; font-weight: 600; color: var(--text-sub);
+            padding-bottom: 10px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         }
-        .day-col { 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: flex-start;
-            gap: 6px; 
-            cursor: pointer; 
-            padding: 8px 1px; 
-            border-radius: 12px; 
-            transition: background-color 0.15s; 
-            border: 2px solid transparent; 
-            min-width: 0;
-            width: 100%;
-        }
-        .day-col.selected { border-color: var(--primary-color); background-color: rgba(52, 199, 89, 0.08); }
-        .day-name { font-size: 14px; color: var(--text-sub); font-weight: 700; }
-        .day-name.today { color: var(--primary-color); font-weight: 800; }
         
-        .icon-grid { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 2px; 
-            background-color: var(--gray-light); 
-            padding: 4px 2px; 
-            border-radius: 9px; 
-            pointer-events: none; 
-            width: 100%;
-            max-width: 38px;
-            justify-items: center;
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-auto-rows: 46px;
+            gap: 2px;
+            text-align: center;
         }
-        .mini-icon { font-size: 10px; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
-        .mini-icon.inactive { opacity: 0.15; filter: grayscale(100%); }
-        .mini-icon.active { opacity: 1; }
+        .cal-cell {
+            position: relative; border-radius: 10px; display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-start; padding: 3px 1px;
+            border: 1.5px solid transparent;
+            cursor: pointer; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+            height: 46px;
+        }
+        .cal-cell.today .cal-date-num { 
+            color: var(--primary); font-weight: 800;
+        }
+        .cal-cell.selected { 
+            background-color: #FFFFFF; 
+            border-color: var(--primary); 
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.16);
+        }
+        .cal-cell.has-search { box-shadow: 0 0 0 2px #FF9500 inset; }
+        .cal-date-num { 
+            font-size: 12px; line-height: 14px; margin-bottom: 2px; font-weight: 500; 
+        }
         
-        .memo-input { width: 100%; box-sizing: border-box; background-color: var(--gray-light); border: none; border-radius: 12px; padding: 14px; font-size: 14px; color: var(--text-main); font-family: inherit; resize: none; height: 72px; outline: none; transition: box-shadow 0.2s; }
-        .memo-input:focus { box-shadow: 0 0 0 2px var(--primary-color); }
+        .cal-thumb {
+            width: 20px; height: 20px; border-radius: 4px; object-fit: cover;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .cal-dot {
+            width: 5px; height: 5px; border-radius: 50%; background: var(--primary);
+            margin-top: 4px;
+        }
 
-        .photo-gallery-wrapper { padding: 0 4px; }
-        .photo-gallery-scroll {
-            display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 8px 2px;
+        /* 2. 타임라인 영역 */
+        .timeline-section {
+            flex: 1;
+            overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+            padding: 16px;
+            padding-bottom: calc(50px + env(safe-area-inset-bottom));
+            display: flex; flex-direction: column; gap: 14px;
         }
-        .photo-card-item {
-            position: relative; width: 110px; height: 155px; flex-shrink: 0;
-            border-radius: 14px; overflow: hidden; background-color: var(--card-bg);
-            border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            cursor: pointer;
+        .timeline-header {
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .photo-card-img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
-        .photo-del-chip {
-            position: absolute; top: 6px; right: 6px; width: 22px; height: 22px;
-            background: rgba(0, 0, 0, 0.6); color: white; border: none;
-            border-radius: 50%; font-size: 11px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
-            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        .timeline-date-title { font-size: 17px; font-weight: 700; }
+        .add-entry-btn {
+            background: var(--primary); color: white; border: none; border-radius: 18px;
+            padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 4px;
         }
-        .photo-add-card {
-            width: 100px; height: 155px; flex-shrink: 0; border: 2px dashed var(--gray-btn);
-            border-radius: 14px; display: flex; flex-direction: column; align-items: center;
-            justify-content: center; gap: 6px; cursor: pointer; background-color: var(--gray-light);
-        }
-        .photo-add-card:active { background-color: var(--gray-btn); }
-        .photo-empty-placeholder {
-            border: 2px dashed var(--gray-btn); border-radius: 16px; padding: 26px 16px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 6px; cursor: pointer; background-color: var(--gray-light); margin: 0 4px;
-        }
-        .photo-empty-placeholder:active { background-color: var(--gray-btn); }
 
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-weight: 600; padding: 0 4px; }
-        .calendar-nav-btn { background: none; border: none; font-size: 18px; color: var(--primary-color); cursor: pointer; padding: 4px 12px; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
-        .cal-day-name { font-size: 12px; color: var(--text-sub); margin-bottom: 8px; }
-        .cal-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0; border-radius: 8px; }
-        .cal-date { font-size: 12px; font-weight: 500; }
-        .cal-cell.today .cal-date { background-color: var(--primary-color); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        /* 일기 블록 카드 */
+        .entry-card {
+            background: var(--card); border-radius: 16px; padding: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 10px;
+            position: relative;
+        }
+        .entry-top {
+            display: flex; justify-content: space-between; align-items: center; gap: 8px;
+        }
+        .entry-meta { 
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--text-sub); 
+        }
+        .entry-meta strong, .entry-meta span, .entry-loc {
+            white-space: nowrap;
+        }
+        .entry-loc {
+            background: var(--chip-bg); padding: 3px 8px; border-radius: 6px;
+            font-size: 11px; color: var(--text-main); font-weight: 500; display: inline-flex; align-items: center; gap: 3px;
+        }
         
-        .stat-row { margin-bottom: 14px; }
-        .stat-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; font-weight: 500; }
-        .progress-bg { background-color: var(--gray-btn); height: 8px; border-radius: 4px; overflow: hidden; }
-        .progress-fill { background-color: var(--primary-color); height: 100%; transition: width 0.3s ease; border-radius: 4px; }
-        .yoy-bar-container { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
-        .yoy-label { font-size: 10px; color: var(--text-sub); width: 24px; text-align: right; }
-        
-        .restore-btn {
-            width: 100%; background: none; border: 1px solid var(--gray-btn); color: var(--text-sub);
-            padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer;
-            margin-top: 8px; transition: background 0.2s;
+        .entry-actions {
+            display: flex; align-items: center; gap: 10px; flex-shrink: 0;
         }
-        .restore-btn:active { background-color: var(--gray-light); }
+        .entry-edit-btn { 
+            background: none; border: none; color: var(--primary); font-size: 12px; font-weight: 600; 
+            cursor: pointer; white-space: nowrap; padding: 0;
+        }
+        .entry-del-btn { 
+            background: none; border: none; color: #FF3B30; font-size: 12px; font-weight: 500; 
+            cursor: pointer; white-space: nowrap; padding: 0;
+        }
+        
+        .entry-content {
+            font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+        }
+        
+        .media-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px;
+        }
+        .media-item {
+            position: relative; width: 100%; padding-top: 100%; border-radius: 10px;
+            overflow: hidden; background: #E5E5EA; cursor: pointer;
+        }
+        .media-item img, .media-item video {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+        }
+        .media-video-badge {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 28px; height: 28px; background: rgba(0,0,0,0.6); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;
+        }
 
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--nav-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-top: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-around; padding-bottom: env(safe-area-inset-bottom); z-index: 100; }
-        .nav-item { flex: 1; padding: 12px 0; text-align: center; font-size: 12px; font-weight: 600; color: var(--text-sub); cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
-        .nav-item.active { color: var(--primary-color); }
-        .nav-icon { font-size: 20px; }
+        .empty-timeline {
+            text-align: center; color: var(--text-sub); margin-top: 40px; font-size: 14px; line-height: 1.5;
+        }
 
-        .reward-overlay {
+        /* 작성/수정 모달 */
+        .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-            display: none; align-items: center; justify-content: center; z-index: 1000; padding: 24px;
+            background: rgba(0,0,0,0.45); display: none; align-items: flex-end; z-index: 1000;
         }
-        .reward-overlay.active { display: flex; }
-        .reward-card {
-            background: #FFFFFF; width: 100%; max-width: 330px; border-radius: 24px; padding: 26px 20px;
-            text-align: center; box-shadow: 0 16px 36px rgba(0,0,0,0.2);
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        .modal-overlay.active { display: flex; }
+        .modal-sheet {
+            background: var(--card); width: 100%; max-height: 90vh;
+            border-radius: 20px 20px 0 0; padding: 20px 18px env(safe-area-inset-bottom);
+            overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+            animation: slideUp 0.25s ease-out;
         }
-        @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .reward-badge { display: inline-block; background: #FFF4E5; color: #FF9500; font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 20px; margin-bottom: 12px; }
-        .reward-title { font-size: 19px; font-weight: 800; margin: 0 0 8px 0; color: var(--text-main); }
-        .reward-desc { font-size: 13px; color: var(--text-sub); margin-bottom: 18px; line-height: 1.4; }
-        .reward-box { background: #F9F9FB; border: 1.5px dashed #D1D1D6; border-radius: 16px; padding: 16px 12px; margin-bottom: 20px; }
-        .reward-name { font-size: 16px; font-weight: 700; color: #1C1C1E; line-height: 1.4; }
-        .reward-btn {
-            width: 100%; background: var(--primary-color); color: white; border: none;
-            padding: 14px; border-radius: 14px; font-size: 15px; font-weight: 700; cursor: pointer;
-            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+        .modal-close { background: none; border: none; font-size: 15px; color: var(--text-sub); cursor: pointer; }
+        
+        .chip-group { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; }
+        .chip-btn {
+            background: var(--chip-bg); border: 1.5px solid transparent; border-radius: 14px;
+            padding: 6px 12px; font-size: 13px; cursor: pointer; white-space: nowrap;
+        }
+        .chip-btn.selected { border-color: var(--primary); background: rgba(0,122,255,0.08); font-weight: 600; }
+
+        .loc-bar {
+            display: flex; gap: 8px; align-items: center; font-size: 12px;
+        }
+        .loc-input {
+            flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px;
+        }
+        .loc-btn {
+            background: var(--chip-bg); border: none; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer;
         }
 
+        .input-box-wrapper { position: relative; }
+        .journal-textarea {
+            width: 100%; height: 110px; border: 1px solid var(--line); border-radius: 12px;
+            padding: 12px; font-size: 14px; font-family: inherit; resize: none; outline: none;
+        }
+        .journal-textarea:focus { border-color: var(--primary); }
+        .voice-btn {
+            position: absolute; right: 10px; bottom: 12px;
+            background: var(--chip-bg); border: none; border-radius: 50%; width: 34px; height: 34px;
+            display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;
+        }
+        .voice-btn.recording { background: #FF3B30; color: white; animation: pulse 1.2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        .media-picker-bar {
+            display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--text-sub);
+        }
+        .pick-btn {
+            background: var(--chip-bg); border: none; border-radius: 10px; padding: 8px 12px;
+            font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-main);
+        }
+        .preview-thumbs { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; min-height: 50px; }
+        .preview-thumb-box {
+            position: relative; width: 50px; height: 50px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
+        }
+        .preview-thumb-box img { width: 100%; height: 100%; object-fit: cover; }
+        .preview-del {
+            position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white;
+            border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        .save-btn {
+            background: var(--primary); color: white; border: none; border-radius: 12px;
+            padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 검색 바 모달 */
+        .search-modal {
+            position: fixed; top: 0; left: 0; right: 0; background: var(--card);
+            border-bottom: 1px solid var(--line); padding: 12px 16px;
+            padding-top: calc(16px + env(safe-area-inset-top));
+            display: none; flex-direction: column; gap: 8px; z-index: 500;
+        }
+        .search-modal.active { display: flex; }
+        .search-input-box {
+            display: flex; gap: 8px; align-items: center;
+        }
+        .search-input {
+            flex: 1; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; outline: none;
+        }
+        .search-close { background: none; border: none; font-size: 14px; color: var(--primary); cursor: pointer; }
+        .search-results { max-height: 180px; overflow-y: auto; font-size: 13px; }
+        .search-item { padding: 6px 0; border-bottom: 1px solid var(--chip-bg); cursor: pointer; }
+
+        /* 미디어 라이트박스 */
         .lightbox {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.92);
             display: none; align-items: center; justify-content: center; z-index: 2000;
         }
         .lightbox.active { display: flex; }
-        .lightbox img { max-width: 95%; max-height: 85%; border-radius: 12px; object-fit: contain; }
+        .lightbox img, .lightbox video { max-width: 95%; max-height: 85%; border-radius: 8px; }
         .lightbox-close {
-            position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px;
-            color: white; font-size: 26px; background: none; border: none; cursor: pointer;
+            position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; color: white; font-size: 26px; background: none; border: none; cursor: pointer;
         }
     </style>
 </head>
 <body>
+
+    <!-- 당겨서 새로고침 UI -->
     <div class="pull-refresh-indicator" id="pullIndicator">
         <span class="pull-icon">↓</span>
         <span id="pullText">당겨서 새로고침</span>
     </div>
 
-    <div class="header">
-        <h1 id="dateDisplay"></h1>
-        <div id="streakBadge" class="streak-badge" style="display:none;"></div>
-        <div class="week-nav">
-            <button class="week-nav-btn" onclick="changeWeek(-1)">◀ 이전</button>
-            <span id="weekDisplay" class="week-nav-text"></span>
-            <button class="week-nav-btn" onclick="changeWeek(1)">다음 ▶</button>
+    <!-- 검색창 모달 -->
+    <div class="search-modal" id="searchModal">
+        <div class="search-input-box">
+            <input type="text" class="search-input" id="searchInput" placeholder="기억하고 싶은 단어 검색" oninput="onSearch()">
+            <button class="search-close" onclick="toggleSearch(false)">닫기</button>
         </div>
-        <div id="btnReturnToday" class="return-today" onclick="returnToToday()">오늘로 복귀</div>
+        <div class="search-results" id="searchResults"></div>
     </div>
 
-    <div id="tab-weekly" class="tab-content active">
-        <div class="section-card">
-            <h2 class="section-title">목표 달성 기록</h2>
-            <div class="btn-grid">
-                <button class="check-btn" id="btn-workout" onclick="toggleTask('workout')"><span class="icon">💪</span>일일 운동</button>
-                <button class="check-btn" id="btn-pill" onclick="toggleTask('pill')"><span class="icon">💊</span>영양제 복용</button>
-                <button class="check-btn" id="btn-water" onclick="toggleTask('water')"><span class="icon">💧</span>물/저탄수</button>
-                <button class="check-btn" id="btn-alcohol" onclick="toggleTask('alcohol')"><span class="icon">🍷</span>절주 완료</button>
+    <!-- 1. 캘린더 영역 -->
+    <div class="calendar-section" id="calSection">
+        <div class="cal-header">
+            <button class="cal-btn" onclick="changeMonth(-1)">◀ 이전</button>
+            <div class="cal-title" id="calMonthTitle">2026년 9월</div>
+            <div class="cal-actions">
+                <button class="cal-btn" onclick="goToday()">오늘</button>
+                <button class="cal-btn" onclick="changeMonth(1)">다음 ▶</button>
+                <button class="search-icon-btn" onclick="toggleSearch(true)">🔍</button>
             </div>
         </div>
 
-        <div class="section-card">
-            <h2 class="section-title">주간 기록 <span class="date-range" style="font-size:11px;">(요일을 터치해 확인/수정)</span></h2>
-            <div class="week-view" id="weekViewContainer"></div>
-        </div>
-
-        <div class="section-card">
-            <h2 class="section-title">
-                <span>🏃 운동 인증 사진</span>
-                <span class="date-range" id="photoCardDate"></span>
-            </h2>
-            <div id="workoutPhotoContainer"></div>
-            <input type="file" id="workoutPhotoInput" accept="image/*" multiple style="display:none;" onchange="handleWorkoutPhoto(event)">
-        </div>
-
-        <div class="section-card">
-            <h2 class="section-title">한 줄 메모</h2>
-            <textarea id="memoInput" class="memo-input" placeholder="이날의 특이사항이나 체중 등을 기록해보세요." oninput="onMemoInput()"></textarea>
+        <div class="cal-board">
+            <div class="cal-days-header">
+                <span style="color:#FF3B30;">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+            </div>
+            <div class="cal-grid" id="calendarGrid"></div>
         </div>
     </div>
 
-    <div id="tab-monthly" class="tab-content">
-        <div class="section-card">
-            <div class="calendar-header">
-                <button class="calendar-nav-btn" onclick="changeMonth(-1)">◀</button>
-                <span id="currentMonthDisplay"></span>
-                <button class="calendar-nav-btn" onclick="changeMonth(1)">▶</button>
-            </div>
-            <div class="calendar-grid" id="calendarHeader">
-                <div class="cal-day-name" style="color:#FF3B30;">일</div><div class="cal-day-name">월</div><div class="cal-day-name">화</div>
-                <div class="cal-day-name">수</div><div class="cal-day-name">목</div><div class="cal-day-name">금</div><div class="cal-day-name">토</div>
-            </div>
-            <div class="calendar-grid" id="calendarGrid"></div>
+    <!-- 2. 타임라인 영역 -->
+    <div class="timeline-section" id="timelineSection">
+        <div class="timeline-header">
+            <div class="timeline-date-title" id="timelineDateTitle">2026년 9월 11일 (금)</div>
+            <button class="add-entry-btn" onclick="openEntryModal()"><span>➕</span>기록 쓰기</button>
         </div>
-        <div class="section-card"><h2 class="section-title">월간 누적 달성률 <span class="date-range" id="label-monthly"></span></h2><div id="stat-monthly"></div></div>
-        <div class="section-card"><h2 class="section-title">분기 누적 달성률 <span class="date-range" id="label-quarterly"></span></h2><div id="stat-quarterly"></div></div>
-        <div class="section-card"><h2 class="section-title">반기 누적 달성률 <span class="date-range" id="label-halfyearly"></span></h2><div id="stat-halfyearly"></div></div>
-        <div class="section-card"><h2 class="section-title">올해 누적 달성률 <span class="date-range" id="label-yearly"></span></h2><div id="stat-yearly"></div></div>
-        <div class="section-card"><h2 class="section-title">연도별 비교 <span class="date-range">작년 vs 올해</span></h2><div id="stat-yoy"></div></div>
-        
-        <div class="section-card" style="padding:16px;">
-            <button class="restore-btn" id="btnRestore" onclick="restoreFromGoogleSheet()">🔄 구글 시트에서 데이터 복원하기</button>
+        <div id="timelineCards"></div>
+    </div>
+
+    <!-- 3. 작성/수정 모달 -->
+    <div class="modal-overlay" id="entryModal">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <span id="modalDateLabel">새 일기 기록</span>
+                <button class="modal-close" onclick="closeEntryModal()">취소</button>
+            </div>
+
+            <div style="font-size:12px; font-weight:600; color:var(--text-sub);">오늘의 기분 (선택)</div>
+            <div class="chip-group" id="moodChips">
+                <button class="chip-btn" data-val="😊 좋음">😊 좋음</button>
+                <button class="chip-btn" data-val="😌 평온">😌 평온</button>
+                <button class="chip-btn" data-val="🍷 여유">🍷 여유</button>
+                <button class="chip-btn" data-val="🏃 활기">🏃 활기</button>
+                <button class="chip-btn" data-val="🥱 피곤">🥱 피곤</button>
+            </div>
+
+            <div style="font-size:12px; font-weight:600; color:var(--text-sub);">오늘의 날씨 (선택)</div>
+            <div class="chip-group" id="weatherChips">
+                <button class="chip-btn" data-val="☀️ 맑음">☀️ 맑음</button>
+                <button class="chip-btn" data-val="⛅ 구름">⛅ 구름</button>
+                <button class="chip-btn" data-val="🌧️ 비">🌧️ 비</button>
+                <button class="chip-btn" data-val="❄️ 눈">❄️ 눈</button>
+            </div>
+
+            <div class="loc-bar">
+                <span>📍</span>
+                <input type="text" id="locInput" class="loc-input" placeholder="위치 (예: 서울 송파구)">
+                <button class="loc-btn" onclick="fetchCurrentLocation()">현위치</button>
+            </div>
+
+            <div class="input-box-wrapper">
+                <textarea id="journalContent" class="journal-textarea" placeholder="오늘 어떤 일이 있었나요? 마이크를 탭하면 말하는 즉시 실시간 입력됩니다."></textarea>
+                <button class="voice-btn" id="voiceBtn" onclick="toggleSpeech()">🎙️</button>
+            </div>
+
+            <div class="media-picker-bar">
+                <button class="pick-btn" onclick="document.getElementById('filePicker').click()">📷 사진/영상 추가 (최대 10장)</button>
+                <input type="file" id="filePicker" accept="image/*,video/*" multiple style="display:none;" onchange="handleFileSelect(event)">
+                <span id="fileCountLabel">0개 선택됨</span>
+            </div>
+            <div class="preview-thumbs" id="previewThumbs"></div>
+
+            <button class="save-btn" id="saveBtn" onclick="saveEntry()">저장하기</button>
         </div>
     </div>
 
-    <div class="reward-overlay" id="rewardModal">
-        <div class="reward-card">
-            <div class="reward-badge" id="rewardBadgeText">🎉 1주일 연속 달성!</div>
-            <h3 class="reward-title" id="rewardTitleText">대단합니다! 목표 완수</h3>
-            <div class="reward-desc" id="rewardDescText">루틴을 꾸준히 지켜낸 나 자신에게<br>기분 좋은 보상을 선물하세요.</div>
-            <div class="reward-box">
-                <div style="font-size:12px; color:var(--text-sub); margin-bottom:4px;">오늘의 셀프 보상</div>
-                <div class="reward-name" id="rewardItemText">🍷 좋은 와인 한 잔과 여유로운 저녁</div>
-            </div>
-            <button class="reward-btn" onclick="closeRewardModal()">보상 즐겁게 챙기기</button>
-        </div>
-    </div>
-
-    <div class="lightbox" id="routineLightbox" onclick="closeRoutineLightbox()">
+    <!-- 4. 전체화면 뷰어 -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
         <button class="lightbox-close">✕</button>
-        <div id="routineLightboxContent" style="display:flex; justify-content:center; align-items:center;"></div>
-    </div>
-
-    <div class="bottom-nav">
-        <div class="nav-item active" id="nav-weekly" onclick="switchTab('weekly')"><span class="nav-icon">📅</span>주간 체크</div>
-        <div class="nav-item" id="nav-monthly" onclick="switchTab('monthly')"><span class="nav-icon">📊</span>월간 & 통계</div>
+        <div id="lightboxContent" style="display:flex; justify-content:center; align-items:center;"></div>
     </div>
 
 <script>
-    const GOOGLE_APP_URL = "https://script.google.com/macros/s/AKfycbwLmSLd9xZznwL_X1VUku8TRbk_yLGkv2TCZHKeT4l8CslnFhctX6v2zRLDqMJx9LsG/exec";
+    const GOOGLE_APP_URL = "https://script.google.com/macros/s/AKfycbwqB0jX942QF3Epg5-r-s33DYpoGIvDJ27r2aJWILew1mYq1m0NcZ_n2EA-Ng2nnlc/exec";
 
-    const systemToday = new Date();
-    const todayStr = getLocalIsoDate(systemToday);
-    let activeDate = new Date();
-    let activeDateStr = getLocalIsoDate(activeDate);
-    let viewYear = systemToday.getFullYear();
-    let viewMonth = systemToday.getMonth();
-    let isMonthlyDirty = true; 
+    const todayObj = new Date();
+    let currentYear = todayObj.getFullYear();
+    let currentMonth = todayObj.getMonth();
+    let activeDateStr = getLocalIsoDate(todayObj);
 
-    const tasks = ['workout', 'pill', 'water', 'alcohol'];
-    const taskEmojis = { workout: '💪', pill: '💊', water: '💧', alcohol: '🍷' };
-    const taskNames = { workout: '일일 운동', pill: '영양제 복용', water: '물/저탄수 식단', alcohol: '소주/와인 절주' };
+    let journalDB = JSON.parse(localStorage.getItem('myJournalDB') || "[]");
+    let pendingMediaFiles = [];
+    let isRecording = false;
+    let recognition = null;
+    let baseSpeechText = "";
+    let speechTimer = null;
+    let selectedMood = "";
+    let selectedWeather = "";
+    let currentEditingId = null;
 
-    const rewardList = [
-        "🍷 아껴둔 좋은 와인 한 병과 여유로운 밤",
-        "🥩 예약 곤란 맛집 탐방권 (나만의 치팅데이)",
-        "☕ 나만을 위한 온전한 반차 & 꿀같은 낮잠",
-        "✈️ 주말 훌쩍 떠나는 근교 힐링 여행권",
-        "⛳ 주말 여유로운 스크린/필드 라운딩",
-        "💆 하루의 피로를 녹여주는 최고급 사우나·스파",
-        "🎧 좋아하는 음악 들으며 카페에서 보내는 자유시간"
-    ];
-
-    let db = JSON.parse(localStorage.getItem('routineDB')) || {};
-    
-    function initDB(dateStr) {
-        if (!db[dateStr]) {
-            db[dateStr] = { workout: false, pill: false, water: false, alcohol: false, memo: "", workoutPhotos: [] };
-        } else {
-            if (db[dateStr].memo === undefined) db[dateStr].memo = "";
-            if (!Array.isArray(db[dateStr].workoutPhotos)) {
-                if (db[dateStr].workoutPhoto) {
-                    if (db[dateStr].workoutPhoto.startsWith('[')) {
-                        try { db[dateStr].workoutPhotos = JSON.parse(db[dateStr].workoutPhoto); } 
-                        catch(e) { db[dateStr].workoutPhotos = [db[dateStr].workoutPhoto]; }
-                    } else {
-                        db[dateStr].workoutPhotos = [db[dateStr].workoutPhoto];
-                    }
-                } else {
-                    db[dateStr].workoutPhotos = [];
-                }
-            }
-        }
-    }
-    initDB(todayStr);
-    initDB(activeDateStr);
-
-    function getLocalIsoDate(dateObj) { 
-        return dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0'); 
-    }
-    function formatDate(dateObj) { 
-        return `${dateObj.getMonth() + 1}.${dateObj.getDate()}`; 
+    function getLocalIsoDate(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
-    function calculateTaskStreak(taskName) {
-        let streak = 0;
-        let checkDate = new Date(systemToday);
-        let dStr = getLocalIsoDate(checkDate);
-        let hasDoneToday = db[dStr] && db[dStr][taskName];
-        
-        if (!hasDoneToday) {
-            checkDate.setDate(checkDate.getDate() - 1);
-        }
-
-        while (true) {
-            let curStr = getLocalIsoDate(checkDate);
-            if (db[curStr] && db[curStr][taskName]) {
-                streak++;
-                checkDate.setDate(checkDate.getDate() - 1);
-            } else {
-                break;
-            }
-        }
-        return streak;
+    function formatDisplayTime(timeStr) {
+        if (!timeStr) return '';
+        const match = String(timeStr).match(/(\d{1,2}:\d{2})/);
+        return match ? match[1] : timeStr;
     }
 
-    function checkRewardMilestone() {
-        const workoutStreak = calculateTaskStreak('workout');
-        const alcoholStreak = calculateTaskStreak('alcohol');
-
-        if (workoutStreak === 7 || workoutStreak === 30) {
-            const key = `reward_workout_${workoutStreak}_${todayStr}`;
-            if (!localStorage.getItem(key)) {
-                localStorage.setItem(key, "true");
-                showRewardPopup('운동', workoutStreak);
-                return;
-            }
-        }
-
-        if (alcoholStreak === 7 || alcoholStreak === 30) {
-            const key = `reward_alcohol_${alcoholStreak}_${todayStr}`;
-            if (!localStorage.getItem(key)) {
-                localStorage.setItem(key, "true");
-                showRewardPopup('절주', alcoholStreak);
-                return;
-            }
-        }
+    function init() {
+        setupChips();
+        renderCalendar();
+        renderTimeline();
+        syncFromCloud();
+        setupPullToRefresh();
+        setupIOSScrollReset();
     }
 
-    function showRewardPopup(typeName, days) {
-        const periodText = (days === 7) ? "1주일" : "1달(30일)";
-        const badgeText = `🎉 ${typeName} ${periodText} 연속 달성!`;
-        const randomReward = rewardList[Math.floor(Math.random() * rewardList.length)];
-
-        document.getElementById('rewardBadgeText').innerText = badgeText;
-        document.getElementById('rewardTitleText').innerText = `${typeName} 목표 완수를 축하합니다!`;
-        document.getElementById('rewardDescText').innerHTML = `${typeName} 루틴을 꾸준히 지켜낸 나 자신에게<br>기분 좋은 보상을 선물하세요.`;
-        document.getElementById('rewardItemText').innerText = randomReward;
-        document.getElementById('rewardModal').classList.add('active');
-    }
-
-    function closeRewardModal() {
-        document.getElementById('rewardModal').classList.remove('active');
+    function setupIOSScrollReset() {
+        document.querySelectorAll('input, textarea').forEach(el => {
+            el.addEventListener('blur', () => {
+                setTimeout(() => {
+                    window.scrollTo(0, 0);
+                    document.body.scrollTop = 0;
+                }, 100);
+            });
+        });
     }
 
     function setupPullToRefresh() {
         const ind = document.getElementById('pullIndicator');
         const txt = document.getElementById('pullText');
+        const timeline = document.getElementById('timelineSection');
         let startY = 0;
         let isPulling = false;
 
         document.addEventListener('touchstart', (e) => {
-            if (window.scrollY <= 0) {
+            if (timeline.scrollTop <= 0) {
                 startY = e.touches[0].clientY;
                 isPulling = true;
             }
@@ -470,7 +481,7 @@
             const currentY = e.touches[0].clientY;
             const diff = currentY - startY;
 
-            if (diff > 10 && window.scrollY <= 0) {
+            if (diff > 10 && timeline.scrollTop <= 0) {
                 const pullDist = Math.min(diff * 0.45, 75);
                 ind.classList.add('pulling');
                 ind.style.transform = `translateY(${pullDist}px)`;
@@ -508,508 +519,631 @@
         });
     }
 
-    function saveRoutineDB() {
-        try {
-            localStorage.setItem('routineDB', JSON.stringify(db));
-        } catch (e) {
-            console.warn("로컬 용량 한도 대응");
-        }
-    }
-
-    // 🔄 클라우드 데이터 동기화 (폰에 있는 체크값 우선 보호)
     function syncFromCloud(callback) {
-        if (!GOOGLE_APP_URL || GOOGLE_APP_URL.trim() === "") {
-            if (callback) callback();
-            return;
-        }
-        const cacheUrl = GOOGLE_APP_URL + (GOOGLE_APP_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
-        fetch(cacheUrl, { cache: 'no-store' })
+        if (!GOOGLE_APP_URL) { if (callback) callback(); return; }
+        const cacheBusterUrl = GOOGLE_APP_URL + (GOOGLE_APP_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+        
+        fetch(cacheBusterUrl, { cache: 'no-store' })
             .then(res => res.json())
-            .then(data => {
-                Object.keys(data).forEach(dateKey => {
-                    const row = data[dateKey];
-                    if (!db[dateKey]) {
-                        db[dateKey] = {
-                            workout: Boolean(row.workout),
-                            pill: Boolean(row.pill),
-                            water: Boolean(row.water),
-                            alcohol: Boolean(row.alcohol),
-                            memo: row.memo || "",
-                            workoutPhotos: []
-                        };
-                    } else {
-                        // 폰에서 오늘 체크한 값이 이미 true라면 클라우드의 0/false로 덮어쓰지 않음
-                        db[dateKey].workout = db[dateKey].workout || Boolean(row.workout);
-                        db[dateKey].pill = db[dateKey].pill || Boolean(row.pill);
-                        db[dateKey].water = db[dateKey].water || Boolean(row.water);
-                        db[dateKey].alcohol = db[dateKey].alcohol || Boolean(row.alcohol);
-                        if (row.memo && !db[dateKey].memo) db[dateKey].memo = row.memo;
-                    }
-                });
+            .then(res => {
+                if (res.status === "success" && Array.isArray(res.data)) {
+                    const cloudList = res.data;
+                    const mergedMap = new Map();
 
-                saveRoutineDB();
-                initDB(activeDateStr);
-                renderHeader();
-                renderMainButtons();
-                renderWeekView();
-                renderWorkoutPhoto();
-                renderMemo();
-                isMonthlyDirty = true;
-                if (document.getElementById('tab-monthly').classList.contains('active')) {
-                    renderMonthlyView();
+                    cloudList.forEach(item => {
+                        if (item && item.id) mergedMap.set(item.id, item);
+                    });
+
+                    journalDB.forEach(item => {
+                        if (item && item.id) {
+                            if (!mergedMap.has(item.id)) {
+                                mergedMap.set(item.id, item);
+                            } else {
+                                const cloudEntry = mergedMap.get(item.id);
+                                if ((!cloudEntry.media || cloudEntry.media.length === 0) && item.media && item.media.length > 0) {
+                                    cloudEntry.media = item.media;
+                                }
+                            }
+                        }
+                    });
+
+                    journalDB = Array.from(mergedMap.values());
+                    journalDB.sort((a, b) => {
+                        const dtA = (a.date || '') + ' ' + (a.time || '');
+                        const dtB = (b.date || '') + ' ' + (b.time || '');
+                        return dtB.localeCompare(dtA);
+                    });
+
+                    saveToLocalStorage(journalDB);
+                    renderCalendar();
+                    renderTimeline();
                 }
                 if (callback) callback();
-            })
-            .catch(err => {
-                console.log("동기화 대기:", err);
+            }).catch(e => {
+                console.log("동기화 대기중: ", e);
                 if (callback) callback();
             });
     }
 
-    // ⚡ [핵심 수정] 사진을 제외한 150바이트 초경량 데이터만 즉시 전송
-    function syncTasksImmediately(dateStr) {
-        if (!GOOGLE_APP_URL || GOOGLE_APP_URL.trim() === "") return;
-        const currentData = db[dateStr];
-        if (!currentData) return;
+    function renderCalendar() {
+        document.getElementById('calMonthTitle').innerText = `${currentYear}년 ${currentMonth + 1}월`;
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
 
-        fetch(GOOGLE_APP_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({
-                date: dateStr,
-                workout: Boolean(currentData.workout),
-                pill: Boolean(currentData.pill),
-                water: Boolean(currentData.water),
-                alcohol: Boolean(currentData.alcohol),
-                memo: currentData.memo || ""
-            })
-        }).catch(e => console.log('Sync Error:', e));
+        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+        const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const todayStr = getLocalIsoDate(todayObj);
+
+        for (let i = 0; i < firstDay; i++) {
+            grid.innerHTML += `<div></div>`;
+        }
+
+        for (let day = 1; day <= lastDate; day++) {
+            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const entries = journalDB.filter(e => e.date === dateStr);
+            const isToday = (dateStr === todayStr) ? 'today' : '';
+            const isSelected = (dateStr === activeDateStr) ? 'selected' : '';
+
+            let thumbHtml = '';
+            const entryWithThumb = entries.find(e => e.microThumb);
+            if (entryWithThumb && entryWithThumb.microThumb) {
+                thumbHtml = `<img src="${entryWithThumb.microThumb}" class="cal-thumb" alt="thumb">`;
+            } else if (entries.length > 0) {
+                thumbHtml = `<div class="cal-dot"></div>`;
+            }
+
+            grid.innerHTML += `
+                <div class="cal-cell ${isToday} ${isSelected}" data-date="${dateStr}" onclick="selectDate('${dateStr}')">
+                    <span class="cal-date-num">${day}</span>
+                    ${thumbHtml}
+                </div>
+            `;
+        }
     }
 
-    let memoTimer = null;
-    function onMemoInput() {
-        const memoValue = document.getElementById('memoInput').value;
-        initDB(activeDateStr);
-        db[activeDateStr].memo = memoValue;
-        saveRoutineDB();
-        isMonthlyDirty = true;
-        if (memoTimer) clearTimeout(memoTimer);
-        memoTimer = setTimeout(() => {
-            syncTasksImmediately(activeDateStr);
-        }, 800);
+    function selectDate(dStr) {
+        activeDateStr = dStr;
+        renderCalendar();
+        renderTimeline();
     }
 
-    function restoreFromGoogleSheet() {
-        if (!confirm("구글 시트에 저장된 데이터를 가져와 현재 폰의 데이터를 덮어씌울까요?")) return;
+    function changeMonth(delta) {
+        currentMonth += delta;
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        renderCalendar();
+    }
 
-        const btn = document.getElementById('btnRestore');
-        btn.innerText = "복원 중...";
-        btn.disabled = true;
+    function goToday() {
+        const t = new Date();
+        currentYear = t.getFullYear();
+        currentMonth = t.getMonth();
+        activeDateStr = getLocalIsoDate(t);
+        renderCalendar();
+        renderTimeline();
+    }
 
-        syncFromCloud(() => {
-            alert("구글 시트의 데이터가 성공적으로 복원되었습니다.");
-            btn.innerText = "🔄 구글 시트에서 데이터 복원하기";
-            btn.disabled = false;
+    // 🖼️ 타임라인 렌더링 (고해상도 우선 표시)
+    function renderTimeline() {
+        const parts = activeDateStr.split('-');
+        const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+        document.getElementById('timelineDateTitle').innerText = 
+            `${targetDate.getFullYear()}년 ${targetDate.getMonth() + 1}월 ${targetDate.getDate()}일 (${dayNames[targetDate.getDay()]})`;
+
+        const container = document.getElementById('timelineCards');
+        container.innerHTML = '';
+
+        const entries = journalDB.filter(e => e.date === activeDateStr);
+        if (entries.length === 0) {
+            container.innerHTML = `
+                <div class="empty-timeline">
+                    이 날에 작성된 일기가 없습니다.<br>
+                    우측 상단 <strong>[➕ 기록 쓰기]</strong>를 눌러 추억을 남겨보세요.
+                </div>
+            `;
+            return;
+        }
+
+        entries.forEach(entry => {
+            let mediaHtml = '';
+            if (entry.media && entry.media.length > 0) {
+                mediaHtml = `<div class="media-grid">`;
+                entry.media.forEach(m => {
+                    const isVideo = m.type && m.type.startsWith('video');
+                    const displayUrl = isVideo ? (m.thumb || m.base64 || m.viewUrl) : (m.base64 || m.viewUrl || m.thumb);
+                    const fullUrl = m.viewUrl || m.base64 || m.thumb;
+
+                    if (isVideo) {
+                        mediaHtml += `
+                            <div class="media-item" onclick="viewMedia('${fullUrl}', 'video')">
+                                <img src="${displayUrl}" loading="lazy">
+                                <div class="media-video-badge">▶</div>
+                            </div>
+                        `;
+                    } else {
+                        mediaHtml += `
+                            <div class="media-item" onclick="viewMedia('${fullUrl}', 'image')">
+                                <img src="${displayUrl}" loading="lazy">
+                            </div>
+                        `;
+                    }
+                });
+                mediaHtml += `</div>`;
+            }
+
+            const locHtml = entry.location ? `<span class="entry-loc">📍 ${entry.location}</span>` : '';
+            const moodHtml = entry.mood ? `<span>${entry.mood}</span>` : '';
+            const weatherHtml = entry.weather ? `<span>${entry.weather}</span>` : '';
+
+            container.innerHTML += `
+                <div class="entry-card">
+                    <div class="entry-top">
+                        <div class="entry-meta">
+                            <strong>${formatDisplayTime(entry.time)}</strong>
+                            ${moodHtml} ${weatherHtml} ${locHtml}
+                        </div>
+                        <div class="entry-actions">
+                            <button class="entry-edit-btn" onclick="openEntryModal('${entry.id}')">수정</button>
+                            <button class="entry-del-btn" onclick="deleteEntry('${entry.id}')">삭제</button>
+                        </div>
+                    </div>
+                    <div class="entry-content">${entry.content}</div>
+                    ${mediaHtml}
+                </div>
+            `;
         });
     }
 
-    function compressWorkoutImage(file) {
-        return new Promise((resolve, reject) => {
+    function setupChips() {
+        document.querySelectorAll('#moodChips .chip-btn').forEach(btn => {
+            btn.onclick = () => {
+                if (selectedMood === btn.dataset.val) {
+                    selectedMood = "";
+                    btn.classList.remove('selected');
+                } else {
+                    document.querySelectorAll('#moodChips .chip-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedMood = btn.dataset.val;
+                }
+            };
+        });
+        document.querySelectorAll('#weatherChips .chip-btn').forEach(btn => {
+            btn.onclick = () => {
+                if (selectedWeather === btn.dataset.val) {
+                    selectedWeather = "";
+                    btn.classList.remove('selected');
+                } else {
+                    document.querySelectorAll('#weatherChips .chip-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedWeather = btn.dataset.val;
+                }
+            };
+        });
+    }
+
+    function openEntryModal(editId = null) {
+        currentEditingId = editId;
+        const saveBtn = document.getElementById('saveBtn');
+
+        if (editId) {
+            const entry = journalDB.find(e => e.id === editId);
+            if (!entry) return;
+
+            document.getElementById('modalDateLabel').innerText = `${entry.date} 기록 수정`;
+            document.getElementById('journalContent').value = entry.content || '';
+            document.getElementById('locInput').value = entry.location || '';
+            
+            selectedMood = entry.mood || "";
+            selectedWeather = entry.weather || "";
+            document.querySelectorAll('#moodChips .chip-btn').forEach(b => {
+                b.classList.toggle('selected', b.dataset.val === selectedMood);
+            });
+            document.querySelectorAll('#weatherChips .chip-btn').forEach(b => {
+                b.classList.toggle('selected', b.dataset.val === selectedWeather);
+            });
+
+            pendingMediaFiles = (entry.media || []).map(m => ({ ...m }));
+            renderPreviewThumbs();
+            saveBtn.innerText = "수정 완료";
+        } else {
+            document.getElementById('modalDateLabel').innerText = `${activeDateStr} 새 기록`;
+            document.getElementById('journalContent').value = '';
+            document.getElementById('locInput').value = '';
+            pendingMediaFiles = [];
+            renderPreviewThumbs();
+            selectedMood = ""; selectedWeather = "";
+            document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected'));
+            saveBtn.innerText = "저장하기";
+        }
+
+        document.getElementById('entryModal').classList.add('active');
+    }
+
+    function closeEntryModal() {
+        document.getElementById('entryModal').classList.remove('active');
+        currentEditingId = null;
+        if (isRecording) stopSpeech();
+        setTimeout(() => { window.scrollTo(0, 0); document.body.scrollTop = 0; }, 50);
+    }
+
+    function fetchCurrentLocation() {
+        if (!navigator.geolocation) { alert("위치 권한을 지원하지 않는 환경입니다."); return; }
+        const locInput = document.getElementById('locInput');
+        locInput.placeholder = "위치 확인 중...";
+
+        navigator.geolocation.getCurrentPosition(pos => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+                .then(r => r.json())
+                .then(data => {
+                    const addr = data.address || {};
+                    const city = addr.city || addr.province || addr.county || "";
+                    const district = addr.borough || addr.suburb || addr.district || "";
+                    locInput.value = `${city} ${district}`.trim() || "현재 위치";
+                }).catch(() => {
+                    locInput.value = "대한민국 서울";
+                });
+        }, () => {
+            locInput.value = "위치 확인 불가";
+        }, { timeout: 7000 });
+    }
+
+    function toggleSpeech() {
+        if (isRecording) {
+            stopSpeech();
+        } else {
+            startSpeech();
+        }
+    }
+
+    function startSpeech() {
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec) {
+            alert("키보드 우측 하단 마이크(받아쓰기 🎙️)를 누르시면 가장 정확하게 입력됩니다!");
+            document.getElementById('journalContent').focus();
+            return;
+        }
+
+        try {
+            if (recognition) { recognition.abort(); }
+            recognition = new SpeechRec();
+            recognition.lang = 'ko-KR';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            const textarea = document.getElementById('journalContent');
+            const voiceBtn = document.getElementById('voiceBtn');
+            baseSpeechText = textarea.value;
+
+            recognition.onstart = () => {
+                isRecording = true;
+                voiceBtn.classList.add('recording');
+                speechTimer = setTimeout(() => { stopSpeech(); }, 15000);
+            };
+
+            recognition.onresult = (e) => {
+                let interim = '';
+                let finalStr = '';
+
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    const transcript = e.results[i][0].transcript;
+                    if (e.results[i].isFinal) {
+                        finalStr += transcript;
+                    } else {
+                        interim += transcript;
+                    }
+                }
+
+                if (finalStr) {
+                    baseSpeechText = (baseSpeechText ? baseSpeechText + ' ' : '') + finalStr;
+                }
+                textarea.value = baseSpeechText + (interim ? (baseSpeechText ? ' ' : '') + interim : '');
+            };
+
+            recognition.onerror = () => { stopSpeech(); };
+            recognition.onend = () => { stopSpeech(); };
+
+            recognition.start();
+        } catch (err) {
+            stopSpeech();
+        }
+    }
+
+    function stopSpeech() {
+        if (speechTimer) { clearTimeout(speechTimer); speechTimer = null; }
+        if (recognition) {
+            try { recognition.stop(); } catch(e) {}
+            recognition = null;
+        }
+        isRecording = false;
+        const voiceBtn = document.getElementById('voiceBtn');
+        if (voiceBtn) voiceBtn.classList.remove('recording');
+    }
+
+    async function handleFileSelect(e) {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        if (pendingMediaFiles.length + files.length > 10) {
+            alert("미디어는 한 번에 최대 10개까지 첨부 가능합니다.");
+            return;
+        }
+
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerText = "미디어 최적화 중...";
+
+        try {
+            for (const file of files) {
+                if (file.type.startsWith('image/')) {
+                    const res = await processImage(file);
+                    pendingMediaFiles.push({
+                        file, type: 'image',
+                        base64: res.compressedBase64,
+                        thumb: res.microThumb
+                    });
+                } else if (file.type.startsWith('video/')) {
+                    const thumb = await extractVideoThumbnail(file);
+                    pendingMediaFiles.push({
+                        file, type: 'video',
+                        thumb: thumb,
+                        base64: thumb
+                    });
+                }
+            }
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerText = currentEditingId ? "수정 완료" : "저장하기";
+        }
+        renderPreviewThumbs();
+    }
+
+    function processImage(file) {
+        return new Promise(resolve => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
                     const maxDim = 900;
                     let w = img.width, h = img.height;
-                    if (w > h && w > maxDim) {
-                        h = Math.round((h * maxDim) / w); w = maxDim;
-                    } else if (h > maxDim) {
-                        w = Math.round((w * maxDim) / h); h = maxDim;
-                    }
+                    if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                    else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+
                     const canvas = document.createElement('canvas');
                     canvas.width = w; canvas.height = h;
                     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                    resolve(canvas.toDataURL('image/jpeg', 0.65));
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.72);
+
+                    const thumbCanvas = document.createElement('canvas');
+                    thumbCanvas.width = 44; thumbCanvas.height = 44;
+                    const minSide = Math.min(img.width, img.height);
+                    thumbCanvas.getContext('2d').drawImage(img, (img.width - minSide)/2, (img.height - minSide)/2, minSide, minSide, 0, 0, 44, 44);
+                    const microThumb = thumbCanvas.toDataURL('image/jpeg', 0.6);
+
+                    resolve({ compressedBase64, microThumb });
                 };
-                img.onerror = reject;
                 img.src = e.target.result;
             };
-            reader.onerror = reject;
             reader.readAsDataURL(file);
         });
     }
 
-    async function handleWorkoutPhoto(event) {
-        const files = Array.from(event.target.files || []);
-        if (!files.length) return;
+    function extractVideoThumbnail(file) {
+        return new Promise(resolve => {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.src = URL.createObjectURL(file);
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadeddata = () => { video.currentTime = 1; };
+            video.onseeked = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 160; canvas.height = 160;
+                canvas.getContext('2d').drawImage(video, 0, 0, 160, 160);
+                resolve(canvas.toDataURL('image/jpeg', 0.65));
+            };
+            video.onerror = () => resolve('');
+        });
+    }
 
-        initDB(activeDateStr);
-        let photos = db[activeDateStr].workoutPhotos || [];
+    function renderPreviewThumbs() {
+        const container = document.getElementById('previewThumbs');
+        container.innerHTML = '';
+        pendingMediaFiles.forEach((m, idx) => {
+            container.innerHTML += `
+                <div class="preview-thumb-box">
+                    <img src="${m.base64 || m.thumb || m.viewUrl}">
+                    <button class="preview-del" onclick="removePendingMedia(${idx})">✕</button>
+                </div>
+            `;
+        });
+        document.getElementById('fileCountLabel').innerText = `${pendingMediaFiles.length}개 선택됨`;
+    }
 
-        if (photos.length + files.length > 5) {
-            alert(`운동 인증 사진은 최대 5장까지 등록할 수 있습니다. (현재 ${photos.length}장 등록됨)`);
-            event.target.value = '';
+    function removePendingMedia(idx) {
+        pendingMediaFiles.splice(idx, 1);
+        renderPreviewThumbs();
+    }
+
+    function saveToLocalStorage(data) {
+        try {
+            localStorage.setItem('myJournalDB', JSON.stringify(data));
+        } catch (e) {
+            console.warn("로컬 저장소 용량 초과 감지, 최적화 진행:", e);
+            try {
+                const slimData = data.map((entry, idx) => {
+                    if (idx > 10 && entry.media) {
+                        return {
+                            ...entry,
+                            media: entry.media.map(m => ({ 
+                                ...m, 
+                                base64: m.viewUrl ? "" : m.base64 
+                            }))
+                        };
+                    }
+                    return entry;
+                });
+                localStorage.setItem('myJournalDB', JSON.stringify(slimData));
+            } catch (err2) {}
+        }
+    }
+
+    // 💾 일기 저장 및 수정 완료
+    async function saveEntry() {
+        const content = document.getElementById('journalContent').value.trim();
+        const hasMedia = pendingMediaFiles.length > 0;
+        const hasMood = !!selectedMood;
+        const hasWeather = !!selectedWeather;
+
+        if (!content && !hasMedia && !hasMood && !hasWeather) {
+            alert("일기 내용(글, 사진, 기분/날씨 중 하나)을 입력해 주세요.");
             return;
         }
 
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerText = "저장 중...";
+
         try {
-            for (const file of files) {
-                const base64 = await compressWorkoutImage(file);
-                photos.push(base64);
+            let microThumb = "";
+            if (pendingMediaFiles.length > 0) {
+                microThumb = pendingMediaFiles[0].thumb || pendingMediaFiles[0].microThumb || pendingMediaFiles[0].base64 || "";
             }
-            db[activeDateStr].workoutPhotos = photos;
 
-            if (!db[activeDateStr].workout) {
-                db[activeDateStr].workout = true;
-                document.getElementById('btn-workout').classList.add('active');
-                renderHeader();
+            let savedEntry = null;
+
+            if (currentEditingId) {
+                const idx = journalDB.findIndex(e => e.id === currentEditingId);
+                if (idx !== -1) {
+                    journalDB[idx].mood = selectedMood || "";
+                    journalDB[idx].weather = selectedWeather || "";
+                    journalDB[idx].location = document.getElementById('locInput').value.trim();
+                    journalDB[idx].content = content;
+                    journalDB[idx].media = pendingMediaFiles.map(m => ({ 
+                        type: m.type || 'image', 
+                        base64: m.base64 || "", 
+                        thumb: m.thumb || m.microThumb || "",
+                        viewUrl: m.viewUrl || "" 
+                    }));
+                    journalDB[idx].microThumb = microThumb;
+                    savedEntry = journalDB[idx];
+                }
+            } else {
+                const now = new Date();
+                const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                const newId = 'entry_' + Date.now();
+
+                savedEntry = {
+                    id: newId,
+                    date: activeDateStr,
+                    time: timeStr,
+                    mood: selectedMood || "",
+                    weather: selectedWeather || "",
+                    location: document.getElementById('locInput').value.trim(),
+                    content: content,
+                    media: pendingMediaFiles.map(m => ({ 
+                        type: m.type || 'image', 
+                        base64: m.base64 || "", 
+                        thumb: m.thumb || m.microThumb || "" 
+                    })),
+                    microThumb: microThumb
+                };
+                journalDB.unshift(savedEntry);
             }
-            saveRoutineDB();
-            renderWorkoutPhoto();
-            renderWeekView();
-            isMonthlyDirty = true;
-            syncTasksImmediately(activeDateStr);
+
+            saveToLocalStorage(journalDB);
+            renderCalendar();
+            renderTimeline();
+            closeEntryModal();
+
+            if (GOOGLE_APP_URL && savedEntry) {
+                fetch(GOOGLE_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        action: 'SAVE_ENTRY',
+                        ...savedEntry
+                    })
+                }).catch(e => console.log("백그라운드 전송 대기:", e));
+            }
         } catch (err) {
-            alert('사진 처리 중 오류가 발생했습니다.');
+            console.error("저장 오류:", err);
+            alert("저장 처리 중 오류가 발생했습니다.");
+            closeEntryModal();
         } finally {
-            event.target.value = '';
+            saveBtn.disabled = false;
+            saveBtn.innerText = "저장하기";
         }
     }
 
-    function deleteWorkoutPhotoItem(idx) {
-        if (!confirm('이 인증 사진을 삭제할까요?')) return;
-        initDB(activeDateStr);
-        let photos = db[activeDateStr].workoutPhotos || [];
-        photos.splice(idx, 1);
-        db[activeDateStr].workoutPhotos = photos;
-        saveRoutineDB();
-        renderWorkoutPhoto();
-        renderWeekView();
-        syncTasksImmediately(activeDateStr);
-    }
-
-    function renderWorkoutPhoto() {
-        const dateEl = document.getElementById('photoCardDate');
-        if (dateEl) {
-            const parts = activeDateStr.split('-');
-            dateEl.innerText = `${parseInt(parts[1])}월 ${parseInt(parts[2])}일`;
-        }
-        const container = document.getElementById('workoutPhotoContainer');
-        if (!container) return;
-
-        initDB(activeDateStr);
-        const photos = db[activeDateStr].workoutPhotos || [];
-
-        if (photos.length > 0) {
-            let cardsHtml = '';
-            photos.forEach((p, idx) => {
-                cardsHtml += `
-                    <div class="photo-card-item">
-                        <img src="${p}" class="photo-card-img" onclick="viewWorkoutPhoto('${p}')" alt="인증사진">
-                        <button class="photo-del-chip" onclick="deleteWorkoutPhotoItem(${idx})">✕</button>
-                    </div>
-                `;
-            });
-
-            let addCardHtml = '';
-            if (photos.length < 5) {
-                addCardHtml = `
-                    <div class="photo-add-card" onclick="document.getElementById('workoutPhotoInput').click()">
-                        <span style="font-size:22px; color:var(--primary-color);">➕</span>
-                        <span style="font-size:12px; font-weight:600; color:var(--text-sub);">사진 추가</span>
-                        <span style="font-size:10px; color:var(--text-sub);">(${photos.length}/5)</span>
-                    </div>
-                `;
-            }
-
-            container.innerHTML = `
-                <div class="photo-gallery-wrapper">
-                    <div class="photo-gallery-scroll">
-                        ${cardsHtml}
-                        ${addCardHtml}
-                    </div>
-                </div>
-            `;
-        } else {
-            container.innerHTML = `
-                <div class="photo-empty-placeholder" onclick="document.getElementById('workoutPhotoInput').click()">
-                    <span style="font-size: 26px;">⌚</span>
-                    <span style="font-weight: 700; font-size: 14px; color: var(--text-main);">애플워치 / 운동 인증 사진 등록 (최대 5장)</span>
-                    <span style="font-size: 12px; color: var(--text-sub);">터치하여 오늘의 운동 기록 캡처를 첨부하세요</span>
-                </div>
-            `;
-        }
-    }
-
-    function viewWorkoutPhoto(url) {
-        const box = document.getElementById('routineLightboxContent');
-        box.innerHTML = `<img src="${url}">`;
-        document.getElementById('routineLightbox').classList.add('active');
-    }
-
-    function closeRoutineLightbox() {
-        document.getElementById('routineLightbox').classList.remove('active');
-        document.getElementById('routineLightboxContent').innerHTML = '';
-    }
-
-    function init() {
-        renderHeader();
-        renderMainButtons();
-        renderWeekView();
-        renderWorkoutPhoto();
-        renderMemo();
-        checkRewardMilestone();
-        setupPullToRefresh();
-        syncFromCloud();
-    }
-
-    function selectDate(dStr) {
-        const parts = dStr.split('-');
-        activeDate = new Date(parts[0], parts[1] - 1, parts[2]);
-        activeDateStr = dStr;
-        initDB(activeDateStr);
-        renderHeader();
-        renderMainButtons();
-        renderWeekView();
-        renderWorkoutPhoto();
-        renderMemo();
-    }
-
-    function changeWeek(offset) {
-        activeDate.setDate(activeDate.getDate() + (offset * 7));
-        activeDateStr = getLocalIsoDate(activeDate);
-        initDB(activeDateStr);
-        renderHeader();
-        renderMainButtons();
-        renderWeekView();
-        renderWorkoutPhoto();
-        renderMemo();
-    }
-
-    function returnToToday() {
-        activeDate = new Date();
-        activeDateStr = getLocalIsoDate(activeDate);
-        initDB(activeDateStr);
-        renderHeader();
-        renderMainButtons();
-        renderWeekView();
-        renderWorkoutPhoto();
-        renderMemo();
-    }
-
-    // ⚡ [버튼 클릭 즉시 전송] 딜레이 제로 & 클라우드 직통 저장
-    function toggleTask(task) {
-        initDB(activeDateStr);
-        db[activeDateStr][task] = !db[activeDateStr][task];
-        saveRoutineDB();
-        
-        document.getElementById(`btn-${task}`).classList.toggle('active', db[activeDateStr][task]);
-        renderWeekView();
-        renderHeader();
-        isMonthlyDirty = true;
-        
-        if (task === 'workout' || task === 'alcohol') {
-            checkRewardMilestone();
-        }
-
-        // 지연 시간 없이 0.01초 만에 구글 시트로 즉시 전송
-        syncTasksImmediately(activeDateStr);
-    }
-
-    function renderHeader() {
-        const isToday = activeDateStr === todayStr;
-        const todayMark = isToday ? ' <span style="color:var(--primary-color); font-size:16px;">(오늘)</span>' : '';
-        document.getElementById('dateDisplay').innerHTML = `${activeDate.getFullYear()}년 ${activeDate.getMonth() + 1}월 ${activeDate.getDate()}일${todayMark}`;
-        
-        const firstDayOfMonth = new Date(activeDate.getFullYear(), activeDate.getMonth(), 1);
-        const weekNum = Math.ceil((activeDate.getDate() + firstDayOfMonth.getDay()) / 7);
-        document.getElementById('weekDisplay').innerText = `${activeDate.getMonth() + 1}월 ${weekNum}주차`;
-        document.getElementById('btnReturnToday').style.display = isToday ? 'none' : 'block';
-
-        const streak = calculateTaskStreak('workout');
-        const streakEl = document.getElementById('streakBadge');
-        if (streak > 0) {
-            streakEl.style.display = 'inline-flex';
-            streakEl.innerHTML = `🔥 운동 ${streak}일 연속 실천 중`;
-        } else {
-            streakEl.style.display = 'none';
-        }
-    }
-
-    function renderMainButtons() {
-        tasks.forEach(task => {
-            const btn = document.getElementById(`btn-${task}`);
-            btn.classList.toggle('active', !!(db[activeDateStr] && db[activeDateStr][task]));
-        });
-    }
-
-    function renderWeekView() {
-        const container = document.getElementById('weekViewContainer');
-        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-        
-        let startOfWeek = new Date(activeDate);
-        startOfWeek.setDate(activeDate.getDate() - activeDate.getDay());
-        
-        let html = '';
-        for (let i = 0; i < 7; i++) {
-            let tDate = new Date(startOfWeek);
-            tDate.setDate(startOfWeek.getDate() + i);
-            let dStr = getLocalIsoDate(tDate);
-            let isSelected = dStr === activeDateStr ? 'selected' : '';
-            let isSystemToday = dStr === todayStr ? 'today' : '';
-            let isSunday = tDate.getDay() === 0;
-            
-            initDB(dStr);
-            let pCount = (db[dStr].workoutPhotos && db[dStr].workoutPhotos.length) || 0;
-            let photoBadge = pCount > 0 
-                ? `<span style="font-size:10px; margin-top:1px; line-height:14px;">⌚${pCount > 1 ? pCount : ''}</span>` 
-                : `<span style="height:15px;"></span>`;
-            
-            html += `
-                <div class="day-col ${isSelected}" onclick="selectDate('${dStr}')">
-                    <span class="day-name ${isSystemToday}" style="${isSunday && !isSystemToday ? 'color:#FF3B30;' : ''}">${dayNames[tDate.getDay()]}</span>
-                    <div class="icon-grid">
-            `;
-            tasks.forEach(task => {
-                let isActive = (db[dStr] && db[dStr][task]) ? 'active' : 'inactive';
-                html += `<div class="mini-icon ${isActive}">${taskEmojis[task]}</div>`;
-            });
-            html += `
-                    </div>
-                    ${photoBadge}
-                </div>
-            `;
-        }
-        container.innerHTML = html;
-    }
-
-    function renderMemo() { 
-        document.getElementById('memoInput').value = (db[activeDateStr] && db[activeDateStr].memo) || ""; 
-    }
-
-    function renderMonthlyView() {
+    function deleteEntry(id) {
+        if (!confirm("이 일기 기록을 삭제할까요?")) return;
+        journalDB = journalDB.filter(e => e.id !== id);
+        saveToLocalStorage(journalDB);
         renderCalendar();
-        renderStats();
-        isMonthlyDirty = false;
-    }
+        renderTimeline();
 
-    function renderCalendar() {
-        document.getElementById('currentMonthDisplay').innerText = `${viewYear}년 ${viewMonth + 1}월`;
-        const grid = document.getElementById('calendarGrid');
-        const firstDate = new Date(viewYear, viewMonth, 1);
-        const lastDate = new Date(viewYear, viewMonth + 1, 0);
-        
-        let html = '';
-        for (let i = 0; i < firstDate.getDay(); i++) { html += `<div></div>`; }
-        for (let day = 1; day <= lastDate.getDate(); day++) {
-            let tDate = new Date(viewYear, viewMonth, day);
-            let dStr = getLocalIsoDate(tDate);
-            let isTodayClass = (dStr === todayStr) ? 'today' : '';
-            html += `<div class="cal-cell ${isTodayClass}"><span class="cal-date">${day}</span><div class="icon-grid" style="padding:4px; gap:2px; border-radius:6px; background-color:transparent;">`;
-            tasks.forEach(task => {
-                let isActive = (db[dStr] && db[dStr][task]) ? 'active' : 'inactive';
-                html += `<div class="mini-icon ${isActive}" style="font-size:10px; width:12px; height:12px;">${taskEmojis[task]}</div>`;
-            });
-            if (db[dStr] && db[dStr].memo && db[dStr].memo.trim() !== "") {
-                html += `<div style="width:4px; height:4px; background-color:var(--text-sub); border-radius:50%; margin-top:2px;"></div>`;
-            }
-            html += `</div></div>`;
+        if (GOOGLE_APP_URL) {
+            fetch(GOOGLE_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action: 'DELETE_ENTRY', id: id })
+            }).catch(e => console.log(e));
         }
-        grid.innerHTML = html;
     }
 
-    function changeMonth(offset) {
-        viewMonth += offset;
-        if (viewMonth < 0) { viewMonth = 11; viewYear--; }
-        else if (viewMonth > 11) { viewMonth = 0; viewYear++; }
-        renderCalendar();
-    }
-
-    function getStatsForPeriod(startDate, endDate) {
-        let days = 0;
-        let stats = { workout: 0, pill: 0, water: 0, alcohol: 0 };
-        let iter = new Date(startDate);
-        iter.setHours(12, 0, 0, 0);
-        let end = new Date(endDate);
-        end.setHours(12, 0, 0, 0);
-
-        while (iter <= end) {
-            days++; 
-            let dStr = getLocalIsoDate(iter);
-            if (db[dStr]) { 
-                tasks.forEach(t => { if (db[dStr][t]) stats[t]++; }); 
-            }
-            iter.setDate(iter.getDate() + 1);
+    function toggleSearch(show) {
+        const modal = document.getElementById('searchModal');
+        if (show) {
+            modal.classList.add('active');
+            document.getElementById('searchInput').focus();
+        } else {
+            modal.classList.remove('active');
+            document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search'));
         }
-        return { days, stats };
     }
 
-    function createProgressHtml(stats, totalDays) {
-        let html = '';
-        tasks.forEach(task => {
-            let pct = totalDays > 0 ? Math.round((stats[task] / totalDays) * 100) : 0;
-            html += `<div class="stat-row"><div class="stat-label"><span>${taskEmojis[task]} ${taskNames[task]}</span><span>${pct}% (${stats[task]}/${totalDays}일)</span></div><div class="progress-bg"><div class="progress-fill" style="width: ${pct}%;"></div></div></div>`;
+    function onSearch() {
+        const q = document.getElementById('searchInput').value.trim().toLowerCase();
+        const resBox = document.getElementById('searchResults');
+        resBox.innerHTML = '';
+        document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search'));
+
+        if (!q) return;
+
+        const matched = journalDB.filter(e => 
+            (e.content && e.content.toLowerCase().includes(q)) || 
+            (e.location && e.location.toLowerCase().includes(q))
+        );
+
+        matched.forEach(e => {
+            const cell = document.querySelector(`.cal-cell[data-date="${e.date}"]`);
+            if (cell) cell.classList.add('has-search');
+
+            resBox.innerHTML += `
+                <div class="search-item" onclick="selectDate('${e.date}'); toggleSearch(false);">
+                    <strong>${e.date} (${formatDisplayTime(e.time)})</strong>: ${e.content.substring(0, 30)}...
+                </div>
+            `;
         });
-        return html;
     }
 
-    function renderStats() {
-        const tYear = systemToday.getFullYear();
-        const tMonth = systemToday.getMonth();
-        
-        const mStart = new Date(tYear, tMonth, 1);
-        const mEnd = new Date(tYear, tMonth + 1, 0); 
-        const mData = getStatsForPeriod(mStart, mEnd);
-        document.getElementById('stat-monthly').innerHTML = createProgressHtml(mData.stats, mData.days);
-        document.getElementById('label-monthly').innerText = `(${formatDate(mStart)} ~ ${formatDate(mEnd)})`;
-
-        const qStartMonth = Math.floor(tMonth / 3) * 3;
-        const qStart = new Date(tYear, qStartMonth, 1);
-        const qEnd = new Date(tYear, qStartMonth + 3, 0);
-        const qData = getStatsForPeriod(qStart, qEnd);
-        document.getElementById('stat-quarterly').innerHTML = createProgressHtml(qData.stats, qData.days);
-        document.getElementById('label-quarterly').innerText = `(${formatDate(qStart)} ~ ${formatDate(qEnd)})`;
-
-        const hStartMonth = Math.floor(tMonth / 6) * 6;
-        const hStart = new Date(tYear, hStartMonth, 1);
-        const hEnd = new Date(tYear, hStartMonth + 6, 0);
-        const hData = getStatsForPeriod(hStart, hEnd);
-        document.getElementById('stat-halfyearly').innerHTML = createProgressHtml(hData.stats, hData.days);
-        document.getElementById('label-halfyearly').innerText = `(${formatDate(hStart)} ~ ${formatDate(hEnd)})`;
-
-        const yStart = new Date(tYear, 0, 1);
-        const yEnd = new Date(tYear, 11, 31);
-        const yData = getStatsForPeriod(yStart, yEnd);
-        document.getElementById('stat-yearly').innerHTML = createProgressHtml(yData.stats, yData.days);
-        document.getElementById('label-yearly').innerText = `(${formatDate(yStart)} ~ ${formatDate(yEnd)})`;
-
-        const lastYStart = new Date(tYear - 1, 0, 1);
-        const lastYEnd = new Date(tYear - 1, 11, 31);
-        const lastYData = getStatsForPeriod(lastYStart, lastYEnd);
-        
-        let yoyHtml = '';
-        tasks.forEach(task => {
-            let thisPct = yData.days > 0 ? Math.round((yData.stats[task] / yData.days) * 100) : 0;
-            let lastPct = lastYData.days > 0 ? Math.round((lastYData.stats[task] / lastYData.days) * 100) : 0;
-            let diff = thisPct - lastPct;
-            let diffStr = diff >= 0 ? `<span style="color:var(--primary-color);">▲ ${diff}%</span>` : `<span style="color:#FF3B30;">▼ ${Math.abs(diff)}%</span>`;
-            yoyHtml += `<div class="stat-row" style="margin-bottom: 20px;"><div class="stat-label" style="margin-bottom: 8px;"><span>${taskEmojis[task]} ${taskNames[task]}</span><span>작년 ${lastPct}% ➔ <strong>올해 ${thisPct}%</strong> (${diffStr})</span></div><div class="yoy-bar-container"><span class="yoy-label">작년</span><div class="progress-bg" style="flex:1; height:6px;"><div class="progress-fill" style="width: ${lastPct}%; background-color: var(--text-sub);"></div></div></div><div class="yoy-bar-container"><span class="yoy-label">올해</span><div class="progress-bg" style="flex:1; height:6px;"><div class="progress-fill" style="width: ${thisPct}%;"></div></div></div></div>`;
-        });
-        document.getElementById('stat-yoy').innerHTML = yoyHtml;
-    }
-
-    function switchTab(tabId) {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        
-        document.getElementById(`tab-${tabId}`).classList.add('active');
-        document.getElementById(`nav-${tabId}`).classList.add('active');
-        window.scrollTo(0, 0); 
-
-        if (tabId === 'monthly' && isMonthlyDirty) {
-            renderMonthlyView();
+    function viewMedia(url, type) {
+        const box = document.getElementById('lightboxContent');
+        if (type === 'video') {
+            box.innerHTML = `<video src="${url}" controls autoplay playsinline style="max-width:100%; max-height:80vh;"></video>`;
+        } else {
+            box.innerHTML = `<img src="${url}">`;
         }
+        document.getElementById('lightbox').classList.add('active');
+    }
+
+    function closeLightbox() {
+        document.getElementById('lightbox').classList.remove('active');
+        document.getElementById('lightboxContent').innerHTML = '';
     }
 
     init();
