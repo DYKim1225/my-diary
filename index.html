@@ -128,6 +128,7 @@
             font-size: 12px; line-height: 14px; margin-bottom: 2px; font-weight: 500; 
         }
         
+        /* 캘린더 날짜 셀 안의 썸네일 */
         .cal-thumb {
             width: 20px; height: 20px; border-radius: 4px; object-fit: cover;
             box-shadow: 0 1px 3px rgba(0,0,0,0.15);
@@ -176,7 +177,6 @@
             font-size: 11px; color: var(--text-main); font-weight: 500; display: inline-flex; align-items: center; gap: 3px;
         }
         
-        /* 버튼 그룹 (수정/삭제) */
         .entry-actions {
             display: flex; align-items: center; gap: 10px; flex-shrink: 0;
         }
@@ -193,12 +193,13 @@
             font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
         }
         
+        /* 미디어 그리드 */
         .media-grid {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px;
         }
         .media-item {
             position: relative; width: 100%; padding-top: 100%; border-radius: 10px;
-            overflow: hidden; background: #000; cursor: pointer;
+            overflow: hidden; background: #E5E5EA; cursor: pointer;
         }
         .media-item img, .media-item video {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
@@ -431,7 +432,7 @@
     let speechTimer = null;
     let selectedMood = "";
     let selectedWeather = "";
-    let currentEditingId = null; // 수정 중인 일기 ID (신규 작성 시 null)
+    let currentEditingId = null;
 
     function getLocalIsoDate(d) {
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -624,7 +625,7 @@
         renderTimeline();
     }
 
-    // 하단 타임라인 렌더링 (수정 / 삭제 버튼 지원)
+    // 🖼️ 타임라인 렌더링 (고해상도 base64 1순위 적용 - 깨짐 현상 완벽 해결)
     function renderTimeline() {
         const parts = activeDateStr.split('-');
         const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -651,18 +652,22 @@
             if (entry.media && entry.media.length > 0) {
                 mediaHtml = `<div class="media-grid">`;
                 entry.media.forEach(m => {
-                    const imgUrl = m.thumb || m.base64 || m.viewUrl;
-                    if (m.type && m.type.startsWith('video')) {
+                    const isVideo = m.type && m.type.startsWith('video');
+                    // ✨ 핵심 수정: 44px microThumb 대신 선명한 base64/viewUrl을 1순위로 표시!
+                    const displayUrl = isVideo ? (m.thumb || m.base64 || m.viewUrl) : (m.base64 || m.viewUrl || m.thumb);
+                    const fullUrl = m.viewUrl || m.base64 || m.thumb;
+
+                    if (isVideo) {
                         mediaHtml += `
-                            <div class="media-item" onclick="viewMedia('${m.viewUrl || m.base64}', 'video')">
-                                <img src="${imgUrl}">
+                            <div class="media-item" onclick="viewMedia('${fullUrl}', 'video')">
+                                <img src="${displayUrl}" loading="lazy">
                                 <div class="media-video-badge">▶</div>
                             </div>
                         `;
                     } else {
                         mediaHtml += `
-                            <div class="media-item" onclick="viewMedia('${m.viewUrl || m.base64}', 'image')">
-                                <img src="${imgUrl}">
+                            <div class="media-item" onclick="viewMedia('${fullUrl}', 'image')">
+                                <img src="${displayUrl}" loading="lazy">
                             </div>
                         `;
                     }
@@ -720,13 +725,11 @@
         });
     }
 
-    // 작성 및 수정 모달 열기
     function openEntryModal(editId = null) {
         currentEditingId = editId;
         const saveBtn = document.getElementById('saveBtn');
 
         if (editId) {
-            // 📝 기존 일기 수정 모드
             const entry = journalDB.find(e => e.id === editId);
             if (!entry) return;
 
@@ -743,12 +746,10 @@
                 b.classList.toggle('selected', b.dataset.val === selectedWeather);
             });
 
-            // 기존 첨부된 미디어 유지
             pendingMediaFiles = (entry.media || []).map(m => ({ ...m }));
             renderPreviewThumbs();
             saveBtn.innerText = "수정 완료";
         } else {
-            // ➕ 신규 작성 모드
             document.getElementById('modalDateLabel').innerText = `${activeDateStr} 새 기록`;
             document.getElementById('journalContent').value = '';
             document.getElementById('locInput').value = '';
@@ -915,13 +916,14 @@
                     const canvas = document.createElement('canvas');
                     canvas.width = w; canvas.height = h;
                     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.68);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.72);
 
+                    // 44x44 캘린더 날짜 셀 전용 초미니 점(Dot) 썸네일 (2KB)
                     const thumbCanvas = document.createElement('canvas');
                     thumbCanvas.width = 44; thumbCanvas.height = 44;
                     const minSide = Math.min(img.width, img.height);
                     thumbCanvas.getContext('2d').drawImage(img, (img.width - minSide)/2, (img.height - minSide)/2, minSide, minSide, 0, 0, 44, 44);
-                    const microThumb = thumbCanvas.toDataURL('image/jpeg', 0.55);
+                    const microThumb = thumbCanvas.toDataURL('image/jpeg', 0.6);
 
                     resolve({ compressedBase64, microThumb });
                 };
@@ -955,7 +957,7 @@
         pendingMediaFiles.forEach((m, idx) => {
             container.innerHTML += `
                 <div class="preview-thumb-box">
-                    <img src="${m.thumb || m.base64 || m.viewUrl}">
+                    <img src="${m.base64 || m.thumb || m.viewUrl}">
                     <button class="preview-del" onclick="removePendingMedia(${idx})">✕</button>
                 </div>
             `;
@@ -972,25 +974,27 @@
         try {
             localStorage.setItem('myJournalDB', JSON.stringify(data));
         } catch (e) {
-            console.warn("로컬 저장소 캐시 압축 실행:", e);
+            console.warn("로컬 저장소 용량 초과 감지, 최적화 진행:", e);
             try {
+                // 이미 클라우드(viewUrl)에 올라간 오래된 일기의 base64만 선택적 정리 (화질 저하 없음)
                 const slimData = data.map((entry, idx) => {
-                    if (idx > 2 && entry.media) {
+                    if (idx > 10 && entry.media) {
                         return {
                             ...entry,
-                            media: entry.media.map(m => ({ ...m, base64: m.thumb || m.viewUrl || "" }))
+                            media: entry.media.map(m => ({ 
+                                ...m, 
+                                base64: m.viewUrl ? "" : m.base64 
+                            }))
                         };
                     }
                     return entry;
                 });
                 localStorage.setItem('myJournalDB', JSON.stringify(slimData));
-            } catch (err2) {
-                console.error("2차 스토리지 압축 실패:", err2);
-            }
+            } catch (err2) {}
         }
     }
 
-    // 💾 일기 저장 및 수정 완료 처리
+    // 💾 일기 저장 및 수정 완료
     async function saveEntry() {
         const content = document.getElementById('journalContent').value.trim();
         const hasMedia = pendingMediaFiles.length > 0;
@@ -1007,15 +1011,15 @@
         saveBtn.innerText = "저장 중...";
 
         try {
+            // 캘린더 날짜 셀에 표시할 2KB 초미니 점(Dot) 추출
             let microThumb = "";
             if (pendingMediaFiles.length > 0) {
-                microThumb = pendingMediaFiles[0].thumb || pendingMediaFiles[0].base64 || pendingMediaFiles[0].viewUrl || "";
+                microThumb = pendingMediaFiles[0].thumb || pendingMediaFiles[0].microThumb || pendingMediaFiles[0].base64 || "";
             }
 
             let savedEntry = null;
 
             if (currentEditingId) {
-                // 🔄 1. 기존 일기 수정 저장
                 const idx = journalDB.findIndex(e => e.id === currentEditingId);
                 if (idx !== -1) {
                     journalDB[idx].mood = selectedMood || "";
@@ -1025,14 +1029,13 @@
                     journalDB[idx].media = pendingMediaFiles.map(m => ({ 
                         type: m.type || 'image', 
                         base64: m.base64 || "", 
-                        thumb: m.thumb || m.base64 || m.viewUrl || "",
+                        thumb: m.thumb || m.microThumb || "",
                         viewUrl: m.viewUrl || "" 
                     }));
                     journalDB[idx].microThumb = microThumb;
                     savedEntry = journalDB[idx];
                 }
             } else {
-                // ➕ 2. 신규 일기 작성
                 const now = new Date();
                 const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
                 const newId = 'entry_' + Date.now();
@@ -1048,7 +1051,7 @@
                     media: pendingMediaFiles.map(m => ({ 
                         type: m.type || 'image', 
                         base64: m.base64 || "", 
-                        thumb: m.thumb || m.base64 || "" 
+                        thumb: m.thumb || m.microThumb || "" 
                     })),
                     microThumb: microThumb
                 };
@@ -1060,7 +1063,6 @@
             renderTimeline();
             closeEntryModal();
 
-            // 3. 구글 시트 클라우드 백업 전송
             if (GOOGLE_APP_URL && savedEntry) {
                 fetch(GOOGLE_APP_URL, {
                     method: 'POST',
