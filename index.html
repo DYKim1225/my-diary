@@ -38,7 +38,7 @@
             overscroll-behavior: none;
         }
 
-        /* 🔄 당겨서 새로고침 인디케이터 */
+        /* 당겨서 새로고침 인디케이터 */
         .pull-refresh-indicator {
             position: absolute;
             top: env(safe-area-inset-top, 0px);
@@ -156,7 +156,6 @@
             display: flex; align-items: center; gap: 4px;
         }
 
-        /* 일기 블록 카드 */
         .entry-card {
             background: var(--card); border-radius: 16px; padding: 14px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 10px;
@@ -417,7 +416,7 @@
 <script>
     const GOOGLE_APP_URL = "https://script.google.com/macros/s/AKfycbwqB0jX942QF3Epg5-r-s33DYpoGIvDJ27r2aJWILew1mYq1m0NcZ_n2EA-Ng2nnlc/exec";
 
-    const todayObj = new Date();
+    let todayObj = new Date();
     let currentYear = todayObj.getFullYear();
     let currentMonth = todayObj.getMonth();
     let activeDateStr = getLocalIsoDate(todayObj);
@@ -442,6 +441,22 @@
         return match ? match[1] : timeStr;
     }
 
+    // 시스템 날짜 갱신 함수 (앱 복귀 시 항상 정확한 오늘 날짜 반영)
+    function refreshSystemDate() {
+        const freshNow = new Date();
+        const freshDateStr = getLocalIsoDate(freshNow);
+        const oldTodayStr = getLocalIsoDate(todayObj);
+        
+        todayObj = freshNow;
+        
+        // 날짜가 바뀐 상태에서 백그라운드 복귀 시 현재 뷰도 자연스럽게 동기화
+        if (freshDateStr !== oldTodayStr && activeDateStr === oldTodayStr) {
+            activeDateStr = freshDateStr;
+            currentYear = freshNow.getFullYear();
+            currentMonth = freshNow.getMonth();
+        }
+    }
+
     function init() {
         setupChips();
         renderCalendar();
@@ -449,6 +464,34 @@
         syncFromCloud();
         setupPullToRefresh();
         setupIOSScrollReset();
+        setupLifeCycleListeners();
+    }
+
+    // ⚡ [핵심] 앱 백그라운드 복귀 & 네트워크 재연결 자동 감지
+    function setupLifeCycleListeners() {
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                refreshSystemDate();
+                // 폰 로컬에 이미 저장된 일기를 지체 없이 즉시 화면에 다시 렌더링
+                journalDB = JSON.parse(localStorage.getItem('myJournalDB') || "[]");
+                renderCalendar();
+                renderTimeline();
+                // 조용하게 백그라운드 동기화 수행
+                syncFromCloud();
+            }
+        });
+
+        window.addEventListener('pageshow', () => {
+            refreshSystemDate();
+            journalDB = JSON.parse(localStorage.getItem('myJournalDB') || "[]");
+            renderCalendar();
+            renderTimeline();
+            syncFromCloud();
+        });
+
+        window.addEventListener('online', () => {
+            syncFromCloud();
+        });
     }
 
     function setupIOSScrollReset() {
@@ -519,6 +562,7 @@
         });
     }
 
+    // 🔄 [개선] 로컬 최신 데이터 절대 보장 스마트 병합
     function syncFromCloud(callback) {
         if (!GOOGLE_APP_URL) { if (callback) callback(); return; }
         const cacheBusterUrl = GOOGLE_APP_URL + (GOOGLE_APP_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
@@ -530,18 +574,39 @@
                     const cloudList = res.data;
                     const mergedMap = new Map();
 
-                    cloudList.forEach(item => {
-                        if (item && item.id) mergedMap.set(item.id, item);
+                    // 1. 현재 로컬 저장소의 최신 데이터를 1순위로 맵에 등록
+                    journalDB.forEach(localItem => {
+                        if (localItem && localItem.id) {
+                            mergedMap.set(localItem.id, localItem);
+                        }
                     });
 
-                    journalDB.forEach(item => {
-                        if (item && item.id) {
-                            if (!mergedMap.has(item.id)) {
-                                mergedMap.set(item.id, item);
+                    // 2. 클라우드 데이터와 지능형 병합 (로컬에 없는 새로운 항목은 추가, 기존 항목은 타임스탬프 비교)
+                    cloudList.forEach(cloudItem => {
+                        if (!cloudItem || !cloudItem.id) return;
+                        
+                        if (!mergedMap.has(cloudItem.id)) {
+                            // 로컬에 없는 클라우드 항목은 추가
+                            mergedMap.set(cloudItem.id, cloudItem);
+                        } else {
+                            const localItem = mergedMap.get(cloudItem.id);
+                            const localTime = localItem.updatedAt || 0;
+                            const cloudTime = cloudItem.updatedAt || 0;
+
+                            // 클라우드 데이터가 더 최신일 때만 갱신 (로컬 미디어 보존)
+                            if (cloudTime > localTime) {
+                                if ((!cloudItem.media || cloudItem.media.length === 0) && localItem.media && localItem.media.length > 0) {
+                                    cloudItem.media = localItem.media;
+                                }
+                                mergedMap.set(cloudItem.id, cloudItem);
                             } else {
-                                const cloudEntry = mergedMap.get(item.id);
-                                if ((!cloudEntry.media || cloudEntry.media.length === 0) && item.media && item.media.length > 0) {
-                                    cloudEntry.media = item.media;
+                                // 로컬 데이터가 최신이거나 같으면 로컬 유지하되 viewUrl 보강
+                                if (cloudItem.media && cloudItem.media.length > 0 && localItem.media) {
+                                    localItem.media.forEach((lm, idx) => {
+                                        if (cloudItem.media[idx] && cloudItem.media[idx].viewUrl && !lm.viewUrl) {
+                                            lm.viewUrl = cloudItem.media[idx].viewUrl;
+                                        }
+                                    });
                                 }
                             }
                         }
@@ -623,7 +688,6 @@
         renderTimeline();
     }
 
-    // 🖼️ 타임라인 렌더링 (고해상도 우선 표시)
     function renderTimeline() {
         const parts = activeDateStr.split('-');
         const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -989,7 +1053,7 @@
         }
     }
 
-    // 💾 일기 저장 및 수정 완료
+    // 💾 일기 저장 및 수정 완료 (타임스탬프 부여로 최신순위 유지)
     async function saveEntry() {
         const content = document.getElementById('journalContent').value.trim();
         const hasMedia = pendingMediaFiles.length > 0;
@@ -1011,6 +1075,7 @@
                 microThumb = pendingMediaFiles[0].thumb || pendingMediaFiles[0].microThumb || pendingMediaFiles[0].base64 || "";
             }
 
+            const nowTimestamp = Date.now();
             let savedEntry = null;
 
             if (currentEditingId) {
@@ -1027,12 +1092,13 @@
                         viewUrl: m.viewUrl || "" 
                     }));
                     journalDB[idx].microThumb = microThumb;
+                    journalDB[idx].updatedAt = nowTimestamp; // 폰 수정 타임스탬프
                     savedEntry = journalDB[idx];
                 }
             } else {
                 const now = new Date();
                 const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                const newId = 'entry_' + Date.now();
+                const newId = 'entry_' + nowTimestamp;
 
                 savedEntry = {
                     id: newId,
@@ -1047,7 +1113,8 @@
                         base64: m.base64 || "", 
                         thumb: m.thumb || m.microThumb || "" 
                     })),
-                    microThumb: microThumb
+                    microThumb: microThumb,
+                    updatedAt: nowTimestamp // 신규 생성 타임스탬프
                 };
                 journalDB.unshift(savedEntry);
             }
