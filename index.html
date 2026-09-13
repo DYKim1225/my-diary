@@ -191,6 +191,7 @@
             font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
         }
         
+        /* 미디어 그리드: 선명한 화질을 위한 렌더링 세팅 */
         .media-grid {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px;
         }
@@ -200,6 +201,8 @@
         }
         .media-item img, .media-item video {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+            image-rendering: -webkit-optimize-contrast;
+            transform: translateZ(0);
         }
         .media-video-badge {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -308,7 +311,7 @@
             display: none; align-items: center; justify-content: center; z-index: 2000;
         }
         .lightbox.active { display: flex; }
-        .lightbox img, .lightbox video { max-width: 95%; max-height: 85%; border-radius: 8px; }
+        .lightbox img, .lightbox video { max-width: 95%; max-height: 85%; border-radius: 8px; object-fit: contain; }
         .lightbox-close {
             position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; color: white; font-size: 26px; background: none; border: none; cursor: pointer;
         }
@@ -316,13 +319,11 @@
 </head>
 <body>
 
-    <!-- 당겨서 새로고침 UI -->
     <div class="pull-refresh-indicator" id="pullIndicator">
         <span class="pull-icon">↓</span>
         <span id="pullText">당겨서 새로고침</span>
     </div>
 
-    <!-- 검색창 모달 -->
     <div class="search-modal" id="searchModal">
         <div class="search-input-box">
             <input type="text" class="search-input" id="searchInput" placeholder="기억하고 싶은 단어 검색" oninput="onSearch()">
@@ -421,7 +422,6 @@
     let currentMonth = todayObj.getMonth();
     let activeDateStr = getLocalIsoDate(todayObj);
 
-    // 1. 앱 열자마자 0.001초 만에 렌더링할 1순위 메모리 DB
     let journalDB = JSON.parse(localStorage.getItem('myJournalDB') || "[]");
     let pendingMediaFiles = [];
     let isRecording = false;
@@ -455,7 +455,40 @@
     }
 
     // ==========================================
-    // 💾 IndexedDB (무제한 대용량 로컬 스토리지)
+    // 🛡️ [절대 룰] 선명한 고화질 이미지 보장 엔진 (모자이크 100% 차단)
+    // ==========================================
+    function getCrispImageSource(m) {
+        if (!m) return '';
+        if (m.type && m.type.startsWith('video')) {
+            return m.viewUrl || m.base64 || '';
+        }
+
+        const b64 = m.base64 || '';
+        // 44px 모자이크 썸네일은 크기가 약 1,000~3,500자로 매우 작음.
+        // 정상적인 900px 사진은 무조건 10,000자 이상임.
+        const isLegitB64 = b64.startsWith('data:image') && b64.length > 6000;
+
+        // 1. 고화질 Base64가 살아있으면 오프라인 0초 로딩을 위해 1순위 사용
+        if (isLegitB64) {
+            return b64;
+        }
+
+        // 2. Base64가 과거에 44px로 잘못 압축되었거나 비어있으면, 무조건 클라우드 고화질 원본 사용!
+        if (m.viewUrl && m.viewUrl.startsWith('http')) {
+            return m.viewUrl;
+        }
+
+        // 3. 차선책: 카드 전용 썸네일이 정상 크기인 경우
+        if (m.cardThumb && m.cardThumb.length > 6000) {
+            return m.cardThumb;
+        }
+
+        // 4. 최후의 수단
+        return b64 || m.viewUrl || '';
+    }
+
+    // ==========================================
+    // 💾 IndexedDB (무제한 대용량 로컬 스토리지 - 화질 손상 제로)
     // ==========================================
     const IDB_NAME = 'MyDiaryIDB';
     const IDB_STORE = 'diary_entries';
@@ -503,101 +536,75 @@
                 store.put(item);
             }
         } catch (e) {
-            console.warn("IndexedDB 저장 대기:", e);
+            console.warn("IDB 저장 대기:", e);
+        }
+    }
+
+    // 🛡️ 로컬스토리지 안전 저장 (절대 원본 journalDB를 오염시키지 않음)
+    function saveToLocalStorage(data) {
+        try {
+            localStorage.setItem('myJournalDB', JSON.stringify(data));
+        } catch (e) {
+            // LocalStorage 용량 한도 초과 시, 캐시 복사본만 생성하여 보관 (메모리의 journalDB는 절대 화질 유지!)
+            try {
+                const cacheCopy = data.map((entry, idx) => {
+                    if (idx < 5) return entry;
+                    return {
+                        ...entry,
+                        media: (entry.media || []).map(m => ({
+                            type: m.type,
+                            viewUrl: m.viewUrl || "",
+                            base64: m.viewUrl ? "" : (m.base64 && m.base64.length < 50000 ? m.base64 : "")
+                        }))
+                    };
+                });
+                localStorage.setItem('myJournalDB', JSON.stringify(cacheCopy));
+            } catch (err2) {}
         }
     }
 
     // ==========================================
-    // 🛡️ LocalStorage 다이어트 사다리 (최신 글 100% 보존)
-    // ==========================================
-    function saveToLocalStorage(data) {
-        // 1단계: 전체 원본 저장 시도
-        try {
-            localStorage.setItem('myJournalDB', JSON.stringify(data));
-            return;
-        } catch (e) {}
-
-        // 2단계: 최신 3개는 원본 유지, 4번째 이전 글은 320px 선명 썸네일(12KB)로 전환하여 용량 85% 감축
-        try {
-            const slim1 = data.map((entry, idx) => {
-                if (idx < 3) return entry;
-                return {
-                    ...entry,
-                    media: (entry.media || []).map(m => ({
-                        ...m,
-                        base64: m.cardThumb || m.thumb || ""
-                    }))
-                };
-            });
-            localStorage.setItem('myJournalDB', JSON.stringify(slim1));
-            return;
-        } catch (e) {}
-
-        // 3단계: 전체 글 320px 카드 썸네일 적용 (모든 날짜의 글과 사진이 100% 살아남음)
-        try {
-            const slim2 = data.map(entry => ({
-                ...entry,
-                media: (entry.media || []).map(m => ({
-                    ...m,
-                    base64: m.cardThumb || m.thumb || ""
-                }))
-            }));
-            localStorage.setItem('myJournalDB', JSON.stringify(slim2));
-            return;
-        } catch (e) {}
-
-        // 4단계: 절대 실패하지 않는 최소 정보 보존
-        try {
-            const minimal = data.map(entry => ({
-                ...entry,
-                media: (entry.media || []).map(m => ({
-                    type: m.type,
-                    cardThumb: m.cardThumb || "",
-                    thumb: m.thumb || "",
-                    viewUrl: m.viewUrl || ""
-                }))
-            }));
-            localStorage.setItem('myJournalDB', JSON.stringify(minimal));
-        } catch (err) {}
-    }
-
-    // ==========================================
-    // 🚀 앱 구동 (0초 즉각 렌더링 -> IDB 갱신 -> 백그라운드 싱크)
+    // 🚀 앱 구동 (0.001초 즉각 렌더링 -> IDB 보강 -> 백그라운드 싱크)
     // ==========================================
     async function init() {
         setupChips();
         
-        // 1. 켜자마자 0.001초 만에 최신 일기 즉시 표시
+        // 1. 앱 열자마자 0초 만에 렌더링
         renderCalendar();
         renderTimeline();
 
-        // 2. 5~15ms 만에 대용량 IndexedDB 데이터 검증 및 보강
+        // 2. 대용량 IndexedDB에서 고화질 데이터 불러와 병합
         const idbEntries = await loadFromIndexedDB();
         if (idbEntries && idbEntries.length > 0) {
-            const localMap = new Map(journalDB.map(e => [e.id, e]));
-            let updated = false;
+            const map = new Map(journalDB.map(e => [e.id, e]));
+            let needsRender = false;
 
             idbEntries.forEach(item => {
-                if (!localMap.has(item.id)) {
-                    localMap.set(item.id, item);
-                    updated = true;
+                if (!map.has(item.id)) {
+                    map.set(item.id, item);
+                    needsRender = true;
                 } else {
-                    const localItem = localMap.get(item.id);
-                    if ((item.updatedAt || 0) > (localItem.updatedAt || 0)) {
-                        localMap.set(item.id, item);
-                        updated = true;
+                    const localItem = map.get(item.id);
+                    // IndexedDB에 더 선명하고 긴 사진이 있다면 복원
+                    if (item.media && localItem.media) {
+                        item.media.forEach((im, idx) => {
+                            const lm = localItem.media[idx];
+                            if (lm && (im.base64 || '').length > (lm.base64 || '').length) {
+                                lm.base64 = im.base64;
+                                needsRender = true;
+                            }
+                        });
                     }
                 }
             });
 
-            if (updated || idbEntries.length > journalDB.length) {
-                journalDB = Array.from(localMap.values());
+            if (needsRender) {
+                journalDB = Array.from(map.values());
                 journalDB.sort((a, b) => {
                     const dtA = (a.date || '') + ' ' + (a.time || '');
                     const dtB = (b.date || '') + ' ' + (b.time || '');
                     return dtB.localeCompare(dtA);
                 });
-                saveToLocalStorage(journalDB);
                 renderCalendar();
                 renderTimeline();
             }
@@ -605,7 +612,7 @@
             saveToIndexedDB(journalDB);
         }
 
-        // 3. 백그라운드 클라우드 자동 동기화
+        // 3. 백그라운드 클라우드 동기화 (기존 깨진 사진 자동 치유 포함)
         syncFromCloud();
         setupPullToRefresh();
         setupIOSScrollReset();
@@ -704,7 +711,7 @@
         });
     }
 
-    // 🔄 클라우드 지능형 동기화 (폰에 있는 최신 글 절대 보존)
+    // 🔄 클라우드 동기화 & 기존 깨진 사진 자동 복원
     function syncFromCloud(callback) {
         if (!GOOGLE_APP_URL) { if (callback) callback(); return; }
         const cacheBusterUrl = GOOGLE_APP_URL + (GOOGLE_APP_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
@@ -716,14 +723,10 @@
                     const cloudList = res.data;
                     const mergedMap = new Map();
 
-                    // 폰에 있는 최신 데이터를 1순위로 세팅
                     journalDB.forEach(localItem => {
-                        if (localItem && localItem.id) {
-                            mergedMap.set(localItem.id, localItem);
-                        }
+                        if (localItem && localItem.id) mergedMap.set(localItem.id, localItem);
                     });
 
-                    // 클라우드 데이터 병합
                     cloudList.forEach(cloudItem => {
                         if (!cloudItem || !cloudItem.id) return;
                         
@@ -731,19 +734,22 @@
                             mergedMap.set(cloudItem.id, cloudItem);
                         } else {
                             const localItem = mergedMap.get(cloudItem.id);
-                            const localTime = localItem.updatedAt || 0;
-                            const cloudTime = cloudItem.updatedAt || 0;
-
-                            if (cloudTime > localTime) {
-                                if ((!cloudItem.media || cloudItem.media.length === 0) && localItem.media && localItem.media.length > 0) {
-                                    cloudItem.media = localItem.media;
-                                }
-                                mergedMap.set(cloudItem.id, cloudItem);
-                            } else {
-                                if (cloudItem.media && cloudItem.media.length > 0 && localItem.media) {
+                            
+                            // ✨ [사진 치유] 로컬 사진이 44px로 손상되어 있거나 viewUrl이 없다면 클라우드 원본 주입
+                            if (cloudItem.media && cloudItem.media.length > 0) {
+                                if (!localItem.media || localItem.media.length === 0) {
+                                    localItem.media = cloudItem.media;
+                                } else {
                                     localItem.media.forEach((lm, idx) => {
-                                        if (cloudItem.media[idx] && cloudItem.media[idx].viewUrl && !lm.viewUrl) {
-                                            lm.viewUrl = cloudItem.media[idx].viewUrl;
+                                        const cm = cloudItem.media[idx];
+                                        if (cm) {
+                                            if (cm.viewUrl) lm.viewUrl = cm.viewUrl;
+                                            const lmLen = (lm.base64 || '').length;
+                                            const cmLen = (cm.base64 || '').length;
+                                            // 로컬이 6000자 미만(손상)이고 클라우드가 정상 크기라면 복원
+                                            if (lmLen < 6000 && cmLen > lmLen) {
+                                                lm.base64 = cm.base64;
+                                            }
                                         }
                                     });
                                 }
@@ -828,6 +834,7 @@
         renderTimeline();
     }
 
+    // 🖼️ 타임라인 렌더링 (절대 깨지지 않는 고화질 소스 보장)
     function renderTimeline() {
         const parts = activeDateStr.split('-');
         const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -855,22 +862,21 @@
                 mediaHtml = `<div class="media-grid">`;
                 entry.media.forEach(m => {
                     const isVideo = m.type && m.type.startsWith('video');
-                    const displayUrl = isVideo 
-                        ? (m.cardThumb || m.thumb || m.base64 || m.viewUrl) 
-                        : (m.base64 || m.cardThumb || m.viewUrl || m.thumb);
-                    const fullUrl = m.viewUrl || m.base64 || m.cardThumb || m.thumb;
+                    // ✨ [핵심] 절대 깨지지 않는 고화질 소스 추출
+                    const displayUrl = getCrispImageSource(m);
+                    const fullUrl = m.viewUrl || m.base64 || displayUrl;
 
                     if (isVideo) {
                         mediaHtml += `
                             <div class="media-item" onclick="viewMedia('${fullUrl}', 'video')">
-                                <img src="${displayUrl}" loading="lazy">
+                                <img src="${displayUrl}" loading="lazy" alt="동영상 썸네일">
                                 <div class="media-video-badge">▶</div>
                             </div>
                         `;
                     } else {
                         mediaHtml += `
                             <div class="media-item" onclick="viewMedia('${fullUrl}', 'image')">
-                                <img src="${displayUrl}" loading="lazy">
+                                <img src="${displayUrl}" loading="lazy" alt="일기 사진">
                             </div>
                         `;
                     }
@@ -1087,16 +1093,14 @@
                     pendingMediaFiles.push({
                         file, type: 'image',
                         base64: res.compressedBase64,
-                        cardThumb: res.cardThumb,
-                        thumb: res.microThumb
+                        microThumb: res.microThumb
                     });
                 } else if (file.type.startsWith('video/')) {
                     const thumb = await extractVideoThumbnail(file);
                     pendingMediaFiles.push({
                         file, type: 'video',
-                        thumb: thumb,
                         base64: thumb,
-                        cardThumb: thumb
+                        microThumb: thumb
                     });
                 }
             }
@@ -1107,14 +1111,14 @@
         renderPreviewThumbs();
     }
 
-    // 🎨 3단계 이미지 생성 (900px 원본 / 320px 카드용 썸네일 / 44px 달력용 도트)
+    // 🎨 [영구 룰] 900px 고화질 선명도 보장 (44px 썸네일은 캘린더 전용으로 완전 분리)
     function processImage(file) {
         return new Promise(resolve => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    // 1. 고해상도 (900px, 0.72)
+                    // 본문 카드 및 라이트박스용 선명한 고해상도 (900px, 0.78 품질)
                     const maxDim = 900;
                     let w = img.width, h = img.height;
                     if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
@@ -1122,26 +1126,16 @@
                     const canvas = document.createElement('canvas');
                     canvas.width = w; canvas.height = h;
                     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.72);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.78);
 
-                    // 2. 카드 전용 레티나 썸네일 (320px, 0.65 - 약 12KB)
-                    const cardDim = 320;
-                    let cw = img.width, ch = img.height;
-                    if (cw > ch && cw > cardDim) { ch = Math.round((ch * cardDim) / cw); cw = cardDim; }
-                    else if (ch > cardDim) { cw = Math.round((cw * cardDim) / ch); cw = cardDim; }
-                    const cardCanvas = document.createElement('canvas');
-                    cardCanvas.width = cw; cardCanvas.height = ch;
-                    cardCanvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
-                    const cardThumb = cardCanvas.toDataURL('image/jpeg', 0.65);
-
-                    // 3. 캘린더 날짜용 마이크로 도트 (44px, 0.5 - 약 1.5KB)
+                    // 달력 날짜 칸 전용 마이크로 도트 (44px, 0.55 품질)
                     const thumbCanvas = document.createElement('canvas');
                     thumbCanvas.width = 44; thumbCanvas.height = 44;
                     const minSide = Math.min(img.width, img.height);
                     thumbCanvas.getContext('2d').drawImage(img, (img.width - minSide)/2, (img.height - minSide)/2, minSide, minSide, 0, 0, 44, 44);
                     const microThumb = thumbCanvas.toDataURL('image/jpeg', 0.55);
 
-                    resolve({ compressedBase64, cardThumb, microThumb });
+                    resolve({ compressedBase64, microThumb });
                 };
                 img.src = e.target.result;
             };
@@ -1173,7 +1167,7 @@
         pendingMediaFiles.forEach((m, idx) => {
             container.innerHTML += `
                 <div class="preview-thumb-box">
-                    <img src="${m.cardThumb || m.base64 || m.thumb || m.viewUrl}">
+                    <img src="${getCrispImageSource(m)}">
                     <button class="preview-del" onclick="removePendingMedia(${idx})">✕</button>
                 </div>
             `;
@@ -1186,7 +1180,7 @@
         renderPreviewThumbs();
     }
 
-    // 💾 일기 저장 및 수정 (IndexedDB + LocalStorage 동시 즉각 기록)
+    // 💾 일기 저장 및 수정 (화질 손상 없는 완벽 저장)
     async function saveEntry() {
         const content = document.getElementById('journalContent').value.trim();
         const hasMedia = pendingMediaFiles.length > 0;
@@ -1205,7 +1199,7 @@
         try {
             let microThumb = "";
             if (pendingMediaFiles.length > 0) {
-                microThumb = pendingMediaFiles[0].thumb || pendingMediaFiles[0].microThumb || pendingMediaFiles[0].cardThumb || pendingMediaFiles[0].base64 || "";
+                microThumb = pendingMediaFiles[0].microThumb || "";
             }
 
             const nowTimestamp = Date.now();
@@ -1221,8 +1215,6 @@
                     journalDB[idx].media = pendingMediaFiles.map(m => ({ 
                         type: m.type || 'image', 
                         base64: m.base64 || "", 
-                        cardThumb: m.cardThumb || m.thumb || "",
-                        thumb: m.thumb || m.microThumb || "",
                         viewUrl: m.viewUrl || "" 
                     }));
                     journalDB[idx].microThumb = microThumb;
@@ -1245,8 +1237,7 @@
                     media: pendingMediaFiles.map(m => ({ 
                         type: m.type || 'image', 
                         base64: m.base64 || "", 
-                        cardThumb: m.cardThumb || "",
-                        thumb: m.thumb || m.microThumb || "" 
+                        viewUrl: m.viewUrl || "" 
                     })),
                     microThumb: microThumb,
                     updatedAt: nowTimestamp
@@ -1254,14 +1245,12 @@
                 journalDB.unshift(savedEntry);
             }
 
-            // ⚡ 0.001초 만에 폰 로컬 두 군데에 동시 영구 저장!
             saveToLocalStorage(journalDB);
             saveToIndexedDB(journalDB);
             renderCalendar();
             renderTimeline();
             closeEntryModal();
 
-            // 백그라운드 클라우드 전송
             if (GOOGLE_APP_URL && savedEntry) {
                 fetch(GOOGLE_APP_URL, {
                     method: 'POST',
