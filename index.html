@@ -38,7 +38,6 @@
             overscroll-behavior: none;
         }
 
-        /* 당겨서 새로고침 인디케이터 */
         .pull-refresh-indicator {
             position: absolute;
             top: env(safe-area-inset-top, 0px);
@@ -59,7 +58,6 @@
         .pull-refresh-indicator.refreshing .pull-icon { animation: spin 0.8s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* 1. 캘린더 영역 */
         .calendar-section {
             padding-top: calc(26px + env(safe-area-inset-top));
             padding-left: 16px;
@@ -77,12 +75,12 @@
             margin-bottom: 18px;
         }
         .cal-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
-        .cal-actions { display: flex; gap: 8px; align-items: center; }
+        .cal-actions { display: flex; gap: 6px; align-items: center; }
         .cal-btn {
             background: var(--chip-bg); border: none; border-radius: 10px;
-            padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-main);
+            padding: 6px 11px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-main);
         }
-        .search-icon-btn {
+        .icon-btn {
             background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px 6px;
         }
 
@@ -137,7 +135,6 @@
             margin-top: 4px;
         }
 
-        /* 2. 타임라인 영역 */
         .timeline-section {
             flex: 1;
             overflow-y: auto;
@@ -191,7 +188,6 @@
             font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
         }
         
-        /* 미디어 그리드: 선명한 화질을 위한 렌더링 세팅 */
         .media-grid {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px;
         }
@@ -199,22 +195,21 @@
             position: relative; width: 100%; padding-top: 100%; border-radius: 10px;
             overflow: hidden; background: #E5E5EA; cursor: pointer;
         }
-        .media-item img, .media-item video {
+        .media-item img {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
             image-rendering: -webkit-optimize-contrast;
             transform: translateZ(0);
         }
         .media-video-badge {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 28px; height: 28px; background: rgba(0,0,0,0.6); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;
+            width: 32px; height: 32px; background: rgba(0,0,0,0.65); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;
         }
 
         .empty-timeline {
             text-align: center; color: var(--text-sub); margin-top: 40px; font-size: 14px; line-height: 1.5;
         }
 
-        /* 작성/수정 모달 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.45); display: none; align-items: flex-end; z-index: 1000;
@@ -272,8 +267,13 @@
         .preview-thumbs { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; min-height: 50px; }
         .preview-thumb-box {
             position: relative; width: 50px; height: 50px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
+            background: #E5E5EA;
         }
         .preview-thumb-box img { width: 100%; height: 100%; object-fit: cover; }
+        .preview-video-tag {
+            position: absolute; bottom: 2px; left: 2px; font-size: 9px; background: rgba(0,0,0,0.6);
+            color: white; border-radius: 3px; padding: 1px 3px;
+        }
         .preview-del {
             position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white;
             border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px;
@@ -287,7 +287,6 @@
         }
         .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* 검색 바 모달 */
         .search-modal {
             position: fixed; top: 0; left: 0; right: 0; background: var(--card);
             border-bottom: 1px solid var(--line); padding: 12px 16px;
@@ -305,15 +304,15 @@
         .search-results { max-height: 180px; overflow-y: auto; font-size: 13px; }
         .search-item { padding: 6px 0; border-bottom: 1px solid var(--chip-bg); cursor: pointer; }
 
-        /* 미디어 라이트박스 */
         .lightbox {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.92);
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95);
             display: none; align-items: center; justify-content: center; z-index: 2000;
         }
         .lightbox.active { display: flex; }
-        .lightbox img, .lightbox video { max-width: 95%; max-height: 85%; border-radius: 8px; object-fit: contain; }
+        .lightbox img { max-width: 95%; max-height: 85%; border-radius: 8px; object-fit: contain; }
+        .lightbox video { max-width: 95%; max-height: 85%; border-radius: 8px; outline: none; }
         .lightbox-close {
-            position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; color: white; font-size: 26px; background: none; border: none; cursor: pointer;
+            position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; color: white; font-size: 26px; background: none; border: none; cursor: pointer; z-index: 2010;
         }
     </style>
 </head>
@@ -332,7 +331,6 @@
         <div class="search-results" id="searchResults"></div>
     </div>
 
-    <!-- 1. 캘린더 영역 -->
     <div class="calendar-section" id="calSection">
         <div class="cal-header">
             <button class="cal-btn" onclick="changeMonth(-1)">◀ 이전</button>
@@ -340,7 +338,8 @@
             <div class="cal-actions">
                 <button class="cal-btn" onclick="goToday()">오늘</button>
                 <button class="cal-btn" onclick="changeMonth(1)">다음 ▶</button>
-                <button class="search-icon-btn" onclick="toggleSearch(true)">🔍</button>
+                <button class="icon-btn" onclick="toggleSearch(true)" title="검색">🔍</button>
+                <button class="icon-btn" onclick="openBackupSheet()" title="데이터 백업/복원">⚙️</button>
             </div>
         </div>
 
@@ -352,16 +351,14 @@
         </div>
     </div>
 
-    <!-- 2. 타임라인 영역 -->
     <div class="timeline-section" id="timelineSection">
         <div class="timeline-header">
-            <div class="timeline-date-title" id="timelineDateTitle">2026년 9월 11일 (금)</div>
+            <div class="timeline-date-title" id="timelineDateTitle">2026년 9월 15일 (화)</div>
             <button class="add-entry-btn" onclick="openEntryModal()"><span>➕</span>기록 쓰기</button>
         </div>
         <div id="timelineCards"></div>
     </div>
 
-    <!-- 3. 작성/수정 모달 -->
     <div class="modal-overlay" id="entryModal">
         <div class="modal-sheet">
             <div class="modal-header">
@@ -398,7 +395,7 @@
             </div>
 
             <div class="media-picker-bar">
-                <button class="pick-btn" onclick="document.getElementById('filePicker').click()">📷 사진/영상 추가 (최대 10장)</button>
+                <button class="pick-btn" onclick="document.getElementById('filePicker').click()">📷 사진/영상 추가 (최대 10개)</button>
                 <input type="file" id="filePicker" accept="image/*,video/*" multiple style="display:none;" onchange="handleFileSelect(event)">
                 <span id="fileCountLabel">0개 선택됨</span>
             </div>
@@ -408,10 +405,30 @@
         </div>
     </div>
 
-    <!-- 4. 전체화면 뷰어 -->
-    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
-        <button class="lightbox-close">✕</button>
-        <div id="lightboxContent" style="display:flex; justify-content:center; align-items:center;"></div>
+    <!-- 백업 및 복원 모달 -->
+    <div class="modal-overlay" id="backupModal">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <span>데이터 보관 및 관리</span>
+                <button class="modal-close" onclick="closeBackupSheet()">닫기</button>
+            </div>
+            <div style="font-size:13px; color:var(--text-sub); line-height:1.5;">
+                소중한 일기 데이터를 안전하게 JSON 파일로 백업하거나, 백업해둔 파일에서 복원할 수 있습니다.
+            </div>
+            <button class="cal-btn" style="padding:12px; font-size:14px; background:var(--primary); color:white;" onclick="exportBackupData()">
+                📥 일기 전체 데이터 백업 다운로드 (.json)
+            </button>
+            <div style="border-top:1px solid var(--line); margin: 6px 0;"></div>
+            <button class="cal-btn" style="padding:12px; font-size:14px;" onclick="document.getElementById('restoreFileInput').click()">
+                📤 백업 파일에서 복원하기
+            </button>
+            <input type="file" id="restoreFileInput" accept=".json" style="display:none;" onchange="importBackupData(event)">
+        </div>
+    </div>
+
+    <div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+        <button class="lightbox-close" onclick="forceCloseLightbox()">✕</button>
+        <div id="lightboxContent" style="display:flex; justify-content:center; align-items:center; width:100%; height:100%;"></div>
     </div>
 
 <script>
@@ -431,6 +448,7 @@
     let selectedMood = "";
     let selectedWeather = "";
     let currentEditingId = null;
+    let isSyncingQueue = false;
 
     function getLocalIsoDate(d) {
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -454,45 +472,25 @@
         }
     }
 
-    // ==========================================
-    // 🛡️ [절대 룰] 선명한 고화질 이미지 보장 엔진 (모자이크 100% 차단)
-    // ==========================================
     function getCrispImageSource(m) {
         if (!m) return '';
-        if (m.type && m.type.startsWith('video')) {
-            return m.viewUrl || m.base64 || '';
+        if (m.type === 'video') {
+            return m.thumb || m.thumbUrl || m.microThumb || '';
         }
-
         const b64 = m.base64 || '';
-        // 44px 모자이크 썸네일은 크기가 약 1,000~3,500자로 매우 작음.
-        // 정상적인 900px 사진은 무조건 10,000자 이상임.
-        const isLegitB64 = b64.startsWith('data:image') && b64.length > 6000;
-
-        // 1. 고화질 Base64가 살아있으면 오프라인 0초 로딩을 위해 1순위 사용
-        if (isLegitB64) {
-            return b64;
-        }
-
-        // 2. Base64가 과거에 44px로 잘못 압축되었거나 비어있으면, 무조건 클라우드 고화질 원본 사용!
-        if (m.viewUrl && m.viewUrl.startsWith('http')) {
-            return m.viewUrl;
-        }
-
-        // 3. 차선책: 카드 전용 썸네일이 정상 크기인 경우
-        if (m.cardThumb && m.cardThumb.length > 6000) {
-            return m.cardThumb;
-        }
-
-        // 4. 최후의 수단
+        if (b64.startsWith('data:image') && b64.length > 6000) return b64;
+        if (m.viewUrl && m.viewUrl.startsWith('http')) return m.viewUrl;
+        if (m.thumbUrl && m.thumbUrl.startsWith('http')) return m.thumbUrl;
         return b64 || m.viewUrl || '';
     }
 
     // ==========================================
-    // 💾 IndexedDB (무제한 대용량 로컬 스토리지 - 화질 손상 제로)
+    // INDEXEDDB ENGINE (Store + Offline Sync Queue)
     // ==========================================
     const IDB_NAME = 'MyDiaryIDB';
     const IDB_STORE = 'diary_entries';
-    const IDB_VERSION = 1;
+    const IDB_QUEUE = 'sync_queue';
+    const IDB_VERSION = 2;
 
     function initIDB() {
         return new Promise((resolve) => {
@@ -502,6 +500,9 @@
                 const db = e.target.result;
                 if (!db.objectStoreNames.contains(IDB_STORE)) {
                     db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains(IDB_QUEUE)) {
+                    db.createObjectStore(IDB_QUEUE, { autoIncrement: true, keyPath: 'queueId' });
                 }
             };
             req.onsuccess = () => resolve(req.result);
@@ -520,9 +521,7 @@
                 req.onsuccess = () => resolve(req.result || []);
                 req.onerror = () => resolve(null);
             });
-        } catch (e) {
-            return null;
-        }
+        } catch (e) { return null; }
     }
 
     async function saveToIndexedDB(entries) {
@@ -535,26 +534,70 @@
             for (const item of entries) {
                 store.put(item);
             }
-        } catch (e) {
-            console.warn("IDB 저장 대기:", e);
+        } catch (e) { console.warn("IDB 저장 지연:", e); }
+    }
+
+    async function enqueueSyncAction(payload) {
+        try {
+            const db = await initIDB();
+            if (!db) return;
+            const tx = db.transaction(IDB_QUEUE, 'readwrite');
+            const store = tx.objectStore(IDB_QUEUE);
+            store.add({ payload, timestamp: Date.now() });
+        } catch (e) {}
+    }
+
+    async function processSyncQueue() {
+        if (isSyncingQueue || !navigator.onLine || !GOOGLE_APP_URL) return;
+        isSyncingQueue = true;
+        try {
+            const db = await initIDB();
+            if (!db) { isSyncingQueue = false; return; }
+
+            const getQueueItems = () => new Promise(res => {
+                const tx = db.transaction(IDB_QUEUE, 'readonly');
+                const req = tx.objectStore(IDB_QUEUE).getAll();
+                req.onsuccess = () => res(req.result || []);
+                req.onerror = () => res([]);
+            });
+
+            const queue = await getQueueItems();
+            for (const item of queue) {
+                try {
+                    await fetch(GOOGLE_APP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify(item.payload)
+                    });
+                    // 전송 성공 시 큐에서 제거
+                    const delTx = db.transaction(IDB_QUEUE, 'readwrite');
+                    delTx.objectStore(IDB_QUEUE).delete(item.queueId);
+                } catch (netErr) {
+                    break; // 네트워크 오류 발생 시 중단 후 대기
+                }
+            }
+        } finally {
+            isSyncingQueue = false;
         }
     }
 
-    // 🛡️ 로컬스토리지 안전 저장 (절대 원본 journalDB를 오염시키지 않음)
     function saveToLocalStorage(data) {
         try {
             localStorage.setItem('myJournalDB', JSON.stringify(data));
         } catch (e) {
-            // LocalStorage 용량 한도 초과 시, 캐시 복사본만 생성하여 보관 (메모리의 journalDB는 절대 화질 유지!)
+            // 용량 초과 시 비디오 Base64 제거 및 과거 이미지 축소
             try {
                 const cacheCopy = data.map((entry, idx) => {
-                    if (idx < 5) return entry;
+                    if (idx < 3) return entry;
                     return {
                         ...entry,
                         media: (entry.media || []).map(m => ({
                             type: m.type,
                             viewUrl: m.viewUrl || "",
-                            base64: m.viewUrl ? "" : (m.base64 && m.base64.length < 50000 ? m.base64 : "")
+                            thumbUrl: m.thumbUrl || "",
+                            thumb: m.thumb || "",
+                            base64: (m.type === 'video' ? '' : (m.base64 && m.base64.length < 50000 ? m.base64 : ""))
                         }))
                     };
                 });
@@ -563,17 +606,11 @@
         }
     }
 
-    // ==========================================
-    // 🚀 앱 구동 (0.001초 즉각 렌더링 -> IDB 보강 -> 백그라운드 싱크)
-    // ==========================================
     async function init() {
         setupChips();
-        
-        // 1. 앱 열자마자 0초 만에 렌더링
         renderCalendar();
         renderTimeline();
 
-        // 2. 대용량 IndexedDB에서 고화질 데이터 불러와 병합
         const idbEntries = await loadFromIndexedDB();
         if (idbEntries && idbEntries.length > 0) {
             const map = new Map(journalDB.map(e => [e.id, e]));
@@ -583,28 +620,12 @@
                 if (!map.has(item.id)) {
                     map.set(item.id, item);
                     needsRender = true;
-                } else {
-                    const localItem = map.get(item.id);
-                    // IndexedDB에 더 선명하고 긴 사진이 있다면 복원
-                    if (item.media && localItem.media) {
-                        item.media.forEach((im, idx) => {
-                            const lm = localItem.media[idx];
-                            if (lm && (im.base64 || '').length > (lm.base64 || '').length) {
-                                lm.base64 = im.base64;
-                                needsRender = true;
-                            }
-                        });
-                    }
                 }
             });
 
             if (needsRender) {
                 journalDB = Array.from(map.values());
-                journalDB.sort((a, b) => {
-                    const dtA = (a.date || '') + ' ' + (a.time || '');
-                    const dtB = (b.date || '') + ' ' + (b.time || '');
-                    return dtB.localeCompare(dtA);
-                });
+                journalDB.sort((a, b) => ((b.date || '') + ' ' + (b.time || '')).localeCompare((a.date || '') + ' ' + (a.time || '')));
                 renderCalendar();
                 renderTimeline();
             }
@@ -612,8 +633,8 @@
             saveToIndexedDB(journalDB);
         }
 
-        // 3. 백그라운드 클라우드 동기화 (기존 깨진 사진 자동 치유 포함)
         syncFromCloud();
+        processSyncQueue();
         setupPullToRefresh();
         setupIOSScrollReset();
         setupLifeCycleListeners();
@@ -627,6 +648,7 @@
                 renderCalendar();
                 renderTimeline();
                 syncFromCloud();
+                processSyncQueue();
             }
         });
 
@@ -636,9 +658,11 @@
             renderCalendar();
             renderTimeline();
             syncFromCloud();
+            processSyncQueue();
         });
 
         window.addEventListener('online', () => {
+            processSyncQueue();
             syncFromCloud();
         });
     }
@@ -688,7 +712,7 @@
             }
         }, { passive: true });
 
-        document.addEventListener('touchend', (e) => {
+        document.addEventListener('touchend', () => {
             if (!isPulling) return;
             isPulling = false;
 
@@ -698,6 +722,7 @@
                 txt.innerText = "데이터 동기화 중...";
 
                 syncFromCloud(() => {
+                    processSyncQueue();
                     txt.innerText = "동기화 완료 ✔";
                     setTimeout(() => {
                         ind.classList.remove('refreshing');
@@ -711,9 +736,8 @@
         });
     }
 
-    // 🔄 클라우드 동기화 & 기존 깨진 사진 자동 복원
     function syncFromCloud(callback) {
-        if (!GOOGLE_APP_URL) { if (callback) callback(); return; }
+        if (!GOOGLE_APP_URL || !navigator.onLine) { if (callback) callback(); return; }
         const cacheBusterUrl = GOOGLE_APP_URL + (GOOGLE_APP_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
         
         fetch(cacheBusterUrl, { cache: 'no-store' })
@@ -734,35 +758,23 @@
                             mergedMap.set(cloudItem.id, cloudItem);
                         } else {
                             const localItem = mergedMap.get(cloudItem.id);
-                            
-                            // ✨ [사진 치유] 로컬 사진이 44px로 손상되어 있거나 viewUrl이 없다면 클라우드 원본 주입
-                            if (cloudItem.media && cloudItem.media.length > 0) {
-                                if (!localItem.media || localItem.media.length === 0) {
-                                    localItem.media = cloudItem.media;
-                                } else {
-                                    localItem.media.forEach((lm, idx) => {
-                                        const cm = cloudItem.media[idx];
-                                        if (cm) {
-                                            if (cm.viewUrl) lm.viewUrl = cm.viewUrl;
-                                            const lmLen = (lm.base64 || '').length;
-                                            const cmLen = (cm.base64 || '').length;
-                                            // 로컬이 6000자 미만(손상)이고 클라우드가 정상 크기라면 복원
-                                            if (lmLen < 6000 && cmLen > lmLen) {
-                                                lm.base64 = cm.base64;
-                                            }
-                                        }
-                                    });
-                                }
+                            if (cloudItem.updatedAt > (localItem.updatedAt || 0)) {
+                                mergedMap.set(cloudItem.id, cloudItem);
+                            } else if (cloudItem.media && cloudItem.media.length > 0) {
+                                // URL 업데이트 보정
+                                localItem.media = localItem.media || [];
+                                cloudItem.media.forEach((cm, idx) => {
+                                    if (localItem.media[idx]) {
+                                        if (cm.viewUrl) localItem.media[idx].viewUrl = cm.viewUrl;
+                                        if (cm.thumbUrl) localItem.media[idx].thumbUrl = cm.thumbUrl;
+                                    }
+                                });
                             }
                         }
                     });
 
                     journalDB = Array.from(mergedMap.values());
-                    journalDB.sort((a, b) => {
-                        const dtA = (a.date || '') + ' ' + (a.time || '');
-                        const dtB = (b.date || '') + ' ' + (b.time || '');
-                        return dtB.localeCompare(dtA);
-                    });
+                    journalDB.sort((a, b) => ((b.date || '') + ' ' + (b.time || '')).localeCompare((a.date || '') + ' ' + (a.time || '')));
 
                     saveToLocalStorage(journalDB);
                     saveToIndexedDB(journalDB);
@@ -770,8 +782,7 @@
                     renderTimeline();
                 }
                 if (callback) callback();
-            }).catch(e => {
-                console.log("동기화 대기중: ", e);
+            }).catch(() => {
                 if (callback) callback();
             });
     }
@@ -834,7 +845,6 @@
         renderTimeline();
     }
 
-    // 🖼️ 타임라인 렌더링 (절대 깨지지 않는 고화질 소스 보장)
     function renderTimeline() {
         const parts = activeDateStr.split('-');
         const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -861,22 +871,22 @@
             if (entry.media && entry.media.length > 0) {
                 mediaHtml = `<div class="media-grid">`;
                 entry.media.forEach(m => {
-                    const isVideo = m.type && m.type.startsWith('video');
-                    // ✨ [핵심] 절대 깨지지 않는 고화질 소스 추출
-                    const displayUrl = getCrispImageSource(m);
-                    const fullUrl = m.viewUrl || m.base64 || displayUrl;
+                    const isVideo = (m.type === 'video');
+                    const displayThumb = m.thumb || m.thumbUrl || m.microThumb || getCrispImageSource(m);
+                    const playUrl = m.viewUrl || m.base64 || '';
 
                     if (isVideo) {
                         mediaHtml += `
-                            <div class="media-item" onclick="viewMedia('${fullUrl}', 'video')">
-                                <img src="${displayUrl}" loading="lazy" alt="동영상 썸네일">
+                            <div class="media-item" onclick="viewMedia('${playUrl}', 'video', '${displayThumb}')">
+                                <img src="${displayThumb}" loading="lazy" alt="동영상 썸네일">
                                 <div class="media-video-badge">▶</div>
                             </div>
                         `;
                     } else {
+                        const fullImageUrl = m.viewUrl || m.base64 || displayThumb;
                         mediaHtml += `
-                            <div class="media-item" onclick="viewMedia('${fullUrl}', 'image')">
-                                <img src="${displayUrl}" loading="lazy" alt="일기 사진">
+                            <div class="media-item" onclick="viewMedia('${fullImageUrl}', 'image')">
+                                <img src="${displayThumb}" loading="lazy" alt="일기 사진">
                             </div>
                         `;
                     }
@@ -1003,11 +1013,8 @@
     }
 
     function toggleSpeech() {
-        if (isRecording) {
-            stopSpeech();
-        } else {
-            startSpeech();
-        }
+        if (isRecording) stopSpeech();
+        else startSpeech();
     }
 
     function startSpeech() {
@@ -1041,11 +1048,8 @@
 
                 for (let i = e.resultIndex; i < e.results.length; i++) {
                     const transcript = e.results[i][0].transcript;
-                    if (e.results[i].isFinal) {
-                        finalStr += transcript;
-                    } else {
-                        interim += transcript;
-                    }
+                    if (e.results[i].isFinal) finalStr += transcript;
+                    else interim += transcript;
                 }
 
                 if (finalStr) {
@@ -1091,15 +1095,21 @@
                 if (file.type.startsWith('image/')) {
                     const res = await processImage(file);
                     pendingMediaFiles.push({
-                        file, type: 'image',
+                        type: 'image',
                         base64: res.compressedBase64,
                         microThumb: res.microThumb
                     });
                 } else if (file.type.startsWith('video/')) {
+                    if (file.size > 25 * 1024 * 1024) {
+                        alert(`영상 파일(${file.name})이 25MB를 초과하여 제외되었습니다.`);
+                        continue;
+                    }
                     const thumb = await extractVideoThumbnail(file);
+                    const videoBase64 = await readFileAsBase64(file);
                     pendingMediaFiles.push({
-                        file, type: 'video',
-                        base64: thumb,
+                        type: 'video',
+                        base64: videoBase64,
+                        thumb: thumb,
                         microThumb: thumb
                     });
                 }
@@ -1107,28 +1117,36 @@
         } finally {
             saveBtn.disabled = false;
             saveBtn.innerText = currentEditingId ? "수정 완료" : "저장하기";
+            e.target.value = '';
         }
         renderPreviewThumbs();
     }
 
-    // 🎨 [영구 룰] 900px 고화질 선명도 보장 (44px 썸네일은 캘린더 전용으로 완전 분리)
+    function readFileAsBase64(file) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(file);
+        });
+    }
+
     function processImage(file) {
         return new Promise(resolve => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
-                    // 본문 카드 및 라이트박스용 선명한 고해상도 (900px, 0.78 품질)
                     const maxDim = 900;
                     let w = img.width, h = img.height;
                     if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
                     else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+                    
                     const canvas = document.createElement('canvas');
                     canvas.width = w; canvas.height = h;
                     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.78);
 
-                    // 달력 날짜 칸 전용 마이크로 도트 (44px, 0.55 품질)
                     const thumbCanvas = document.createElement('canvas');
                     thumbCanvas.width = 44; thumbCanvas.height = 44;
                     const minSide = Math.min(img.width, img.height);
@@ -1154,7 +1172,9 @@
             video.onseeked = () => {
                 const canvas = document.createElement('canvas');
                 canvas.width = 160; canvas.height = 160;
-                canvas.getContext('2d').drawImage(video, 0, 0, 160, 160);
+                const ctx = canvas.getContext('2d');
+                const minSide = Math.min(video.videoWidth, video.videoHeight);
+                ctx.drawImage(video, (video.videoWidth - minSide)/2, (video.videoHeight - minSide)/2, minSide, minSide, 0, 0, 160, 160);
                 resolve(canvas.toDataURL('image/jpeg', 0.65));
             };
             video.onerror = () => resolve('');
@@ -1165,9 +1185,12 @@
         const container = document.getElementById('previewThumbs');
         container.innerHTML = '';
         pendingMediaFiles.forEach((m, idx) => {
+            const displayUrl = m.thumb || getCrispImageSource(m);
+            const tag = (m.type === 'video') ? '<span class="preview-video-tag">영상</span>' : '';
             container.innerHTML += `
                 <div class="preview-thumb-box">
-                    <img src="${getCrispImageSource(m)}">
+                    <img src="${displayUrl}">
+                    ${tag}
                     <button class="preview-del" onclick="removePendingMedia(${idx})">✕</button>
                 </div>
             `;
@@ -1180,7 +1203,6 @@
         renderPreviewThumbs();
     }
 
-    // 💾 일기 저장 및 수정 (화질 손상 없는 완벽 저장)
     async function saveEntry() {
         const content = document.getElementById('journalContent').value.trim();
         const hasMedia = pendingMediaFiles.length > 0;
@@ -1199,7 +1221,7 @@
         try {
             let microThumb = "";
             if (pendingMediaFiles.length > 0) {
-                microThumb = pendingMediaFiles[0].microThumb || "";
+                microThumb = pendingMediaFiles[0].microThumb || pendingMediaFiles[0].thumb || "";
             }
 
             const nowTimestamp = Date.now();
@@ -1212,10 +1234,12 @@
                     journalDB[idx].weather = selectedWeather || "";
                     journalDB[idx].location = document.getElementById('locInput').value.trim();
                     journalDB[idx].content = content;
-                    journalDB[idx].media = pendingMediaFiles.map(m => ({ 
-                        type: m.type || 'image', 
-                        base64: m.base64 || "", 
-                        viewUrl: m.viewUrl || "" 
+                    journalDB[idx].media = pendingMediaFiles.map(m => ({
+                        type: m.type || 'image',
+                        base64: m.base64 || "",
+                        viewUrl: m.viewUrl || "",
+                        thumbUrl: m.thumbUrl || "",
+                        thumb: m.thumb || ""
                     }));
                     journalDB[idx].microThumb = microThumb;
                     journalDB[idx].updatedAt = nowTimestamp;
@@ -1234,10 +1258,12 @@
                     weather: selectedWeather || "",
                     location: document.getElementById('locInput').value.trim(),
                     content: content,
-                    media: pendingMediaFiles.map(m => ({ 
-                        type: m.type || 'image', 
-                        base64: m.base64 || "", 
-                        viewUrl: m.viewUrl || "" 
+                    media: pendingMediaFiles.map(m => ({
+                        type: m.type || 'image',
+                        base64: m.base64 || "",
+                        viewUrl: m.viewUrl || "",
+                        thumbUrl: m.thumbUrl || "",
+                        thumb: m.thumb || ""
                     })),
                     microThumb: microThumb,
                     updatedAt: nowTimestamp
@@ -1251,16 +1277,11 @@
             renderTimeline();
             closeEntryModal();
 
-            if (GOOGLE_APP_URL && savedEntry) {
-                fetch(GOOGLE_APP_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({
-                        action: 'SAVE_ENTRY',
-                        ...savedEntry
-                    })
-                }).catch(e => console.log("백그라운드 전송 대기:", e));
+            // 백엔드 동기화 및 오프라인 큐 삽입
+            if (savedEntry) {
+                const syncPayload = { action: 'SAVE_ENTRY', ...savedEntry };
+                enqueueSyncAction(syncPayload);
+                processSyncQueue();
             }
         } catch (err) {
             console.error("저장 오류:", err);
@@ -1280,14 +1301,9 @@
         renderCalendar();
         renderTimeline();
 
-        if (GOOGLE_APP_URL) {
-            fetch(GOOGLE_APP_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify({ action: 'DELETE_ENTRY', id: id })
-            }).catch(e => console.log(e));
-        }
+        const delPayload = { action: 'DELETE_ENTRY', id: id };
+        enqueueSyncAction(delPayload);
+        processSyncQueue();
     }
 
     function toggleSearch(show) {
@@ -1326,19 +1342,85 @@
         });
     }
 
-    function viewMedia(url, type) {
+    function viewMedia(url, type, posterUrl = '') {
         const box = document.getElementById('lightboxContent');
         if (type === 'video') {
-            box.innerHTML = `<video src="${url}" controls autoplay playsinline style="max-width:100%; max-height:80vh;"></video>`;
+            box.innerHTML = `
+                <video src="${url}" poster="${posterUrl}" controls autoplay playsinline style="max-width:95%; max-height:85vh; border-radius:8px;"></video>
+            `;
         } else {
-            box.innerHTML = `<img src="${url}">`;
+            box.innerHTML = `<img src="${url}" alt="확대 사진">`;
         }
         document.getElementById('lightbox').classList.add('active');
     }
 
-    function closeLightbox() {
+    function closeLightbox(e) {
+        if (e.target.tagName === 'VIDEO' || e.target.tagName === 'IMG') return;
+        forceCloseLightbox();
+    }
+
+    function forceCloseLightbox() {
+        const box = document.getElementById('lightboxContent');
+        const video = box.querySelector('video');
+        if (video) { video.pause(); video.src = ""; }
+        box.innerHTML = '';
         document.getElementById('lightbox').classList.remove('active');
-        document.getElementById('lightboxContent').innerHTML = '';
+    }
+
+    // ==========================================
+    // BACKUP & RESTORE MODULE
+    // ==========================================
+    function openBackupSheet() {
+        document.getElementById('backupModal').classList.add('active');
+    }
+
+    function closeBackupSheet() {
+        document.getElementById('backupModal').classList.remove('active');
+    }
+
+    function exportBackupData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(journalDB, null, 2));
+        const dlAnchor = document.createElement('a');
+        dlAnchor.setAttribute("href", dataStr);
+        dlAnchor.setAttribute("download", `my_diary_backup_${getLocalIsoDate(new Date())}.json`);
+        document.body.appendChild(dlAnchor);
+        dlAnchor.click();
+        dlAnchor.remove();
+        closeBackupSheet();
+    }
+
+    function importBackupData(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const imported = JSON.parse(event.target.result);
+                if (!Array.isArray(imported)) throw new Error("형식 오류");
+
+                if (confirm(`가져온 파일에서 총 ${imported.length}개의 일기를 확인했습니다. 기존 일기와 병합하여 복원할까요?`)) {
+                    const map = new Map(journalDB.map(item => [item.id, item]));
+                    imported.forEach(item => {
+                        if (item && item.id) map.set(item.id, item);
+                    });
+
+                    journalDB = Array.from(map.values());
+                    journalDB.sort((a, b) => ((b.date || '') + ' ' + (b.time || '')).localeCompare((a.date || '') + ' ' + (a.time || '')));
+
+                    saveToLocalStorage(journalDB);
+                    saveToIndexedDB(journalDB);
+                    renderCalendar();
+                    renderTimeline();
+                    alert("데이터 복원이 완료되었습니다.");
+                    closeBackupSheet();
+                }
+            } catch (err) {
+                alert("올바른 백업 JSON 파일이 아닙니다.");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
     }
 
     init();
