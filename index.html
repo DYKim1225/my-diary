@@ -129,6 +129,7 @@
         .cal-thumb {
             width: 20px; height: 20px; border-radius: 4px; object-fit: cover;
             box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+            background-color: #E5E5EA;
         }
         .cal-dot {
             width: 5px; height: 5px; border-radius: 50%; background: var(--primary);
@@ -353,7 +354,7 @@
 
     <div class="timeline-section" id="timelineSection">
         <div class="timeline-header">
-            <div class="timeline-date-title" id="timelineDateTitle">2026년 9월 15일 (화)</div>
+            <div class="timeline-date-title" id="timelineDateTitle">2026년 9월 17일 (목)</div>
             <button class="add-entry-btn" onclick="openEntryModal()"><span>➕</span>기록 쓰기</button>
         </div>
         <div id="timelineCards"></div>
@@ -484,6 +485,23 @@
         return b64 || m.viewUrl || '';
     }
 
+    // 캘린더 썸네일 다계층 방어 확인자 (절대 점으로 추락하지 않게 보장)
+    function getEntryThumbnail(entry) {
+        if (!entry) return '';
+        if (entry.microThumb && entry.microThumb.length > 50) {
+            return entry.microThumb;
+        }
+        if (entry.media && entry.media.length > 0) {
+            const first = entry.media[0];
+            if (first.microThumb && first.microThumb.length > 50) return first.microThumb;
+            if (first.thumb && first.thumb.length > 50) return first.thumb;
+            if (first.thumbUrl && first.thumbUrl.startsWith('http')) return first.thumbUrl;
+            const fallbackSrc = getCrispImageSource(first);
+            if (fallbackSrc) return fallbackSrc;
+        }
+        return '';
+    }
+
     // ==========================================
     // INDEXEDDB ENGINE (Store + Offline Sync Queue)
     // ==========================================
@@ -570,11 +588,10 @@
                         headers: { 'Content-Type': 'text/plain' },
                         body: JSON.stringify(item.payload)
                     });
-                    // 전송 성공 시 큐에서 제거
                     const delTx = db.transaction(IDB_QUEUE, 'readwrite');
                     delTx.objectStore(IDB_QUEUE).delete(item.queueId);
                 } catch (netErr) {
-                    break; // 네트워크 오류 발생 시 중단 후 대기
+                    break;
                 }
             }
         } finally {
@@ -586,7 +603,6 @@
         try {
             localStorage.setItem('myJournalDB', JSON.stringify(data));
         } catch (e) {
-            // 용량 초과 시 비디오 Base64 제거 및 과거 이미지 축소
             try {
                 const cacheCopy = data.map((entry, idx) => {
                     if (idx < 3) return entry;
@@ -603,6 +619,56 @@
                 });
                 localStorage.setItem('myJournalDB', JSON.stringify(cacheCopy));
             } catch (err2) {}
+        }
+    }
+
+    // 소스 URL/Base64에서 44px 썸네일 동적 생성
+    function generateMicroThumb(src) {
+        return new Promise(resolve => {
+            if (!src) { resolve(''); return; }
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 44; canvas.height = 44;
+                    const minSide = Math.min(img.width, img.height);
+                    canvas.getContext('2d').drawImage(
+                        img, 
+                        (img.width - minSide) / 2, 
+                        (img.height - minSide) / 2, 
+                        minSide, minSide, 
+                        0, 0, 44, 44
+                    );
+                    resolve(canvas.toDataURL('image/jpeg', 0.55));
+                } catch(e) {
+                    resolve(src);
+                }
+            };
+            img.onerror = () => resolve(src);
+            img.src = src;
+        });
+    }
+
+    // 과거 누락된 썸네일 자동 치유 엔진 (Auto-Healing)
+    async function autoHealMissingThumbnails() {
+        let changed = false;
+        for (const entry of journalDB) {
+            if ((!entry.microThumb || entry.microThumb.length < 50) && entry.media && entry.media.length > 0) {
+                const rawSrc = getCrispImageSource(entry.media[0]);
+                if (rawSrc) {
+                    const recoveredThumb = await generateMicroThumb(rawSrc);
+                    if (recoveredThumb) {
+                        entry.microThumb = recoveredThumb;
+                        changed = true;
+                    }
+                }
+            }
+        }
+        if (changed) {
+            saveToLocalStorage(journalDB);
+            saveToIndexedDB(journalDB);
+            renderCalendar();
         }
     }
 
@@ -633,6 +699,9 @@
             saveToIndexedDB(journalDB);
         }
 
+        // 실행 즉시 누락 썸네일 검사 및 복구
+        autoHealMissingThumbnails();
+
         syncFromCloud();
         processSyncQueue();
         setupPullToRefresh();
@@ -647,6 +716,7 @@
                 journalDB = JSON.parse(localStorage.getItem('myJournalDB') || "[]");
                 renderCalendar();
                 renderTimeline();
+                autoHealMissingThumbnails();
                 syncFromCloud();
                 processSyncQueue();
             }
@@ -657,6 +727,7 @@
             journalDB = JSON.parse(localStorage.getItem('myJournalDB') || "[]");
             renderCalendar();
             renderTimeline();
+            autoHealMissingThumbnails();
             syncFromCloud();
             processSyncQueue();
         });
@@ -723,6 +794,7 @@
 
                 syncFromCloud(() => {
                     processSyncQueue();
+                    autoHealMissingThumbnails();
                     txt.innerText = "동기화 완료 ✔";
                     setTimeout(() => {
                         ind.classList.remove('refreshing');
@@ -759,9 +831,12 @@
                         } else {
                             const localItem = mergedMap.get(cloudItem.id);
                             if (cloudItem.updatedAt > (localItem.updatedAt || 0)) {
+                                // 클라우드 썸네일이 비어있는데 로컬에 정상 썸네일이 있으면 로컬 것 보존
+                                if (!cloudItem.microThumb && localItem.microThumb) {
+                                    cloudItem.microThumb = localItem.microThumb;
+                                }
                                 mergedMap.set(cloudItem.id, cloudItem);
                             } else if (cloudItem.media && cloudItem.media.length > 0) {
-                                // URL 업데이트 보정
                                 localItem.media = localItem.media || [];
                                 cloudItem.media.forEach((cm, idx) => {
                                     if (localItem.media[idx]) {
@@ -807,9 +882,20 @@
             const isSelected = (dateStr === activeDateStr) ? 'selected' : '';
 
             let thumbHtml = '';
-            const entryWithThumb = entries.find(e => e.microThumb);
-            if (entryWithThumb && entryWithThumb.microThumb) {
-                thumbHtml = `<img src="${entryWithThumb.microThumb}" class="cal-thumb" alt="thumb">`;
+            let resolvedThumbUrl = '';
+
+            // 1. 해당 일자의 엔트리 중 사진/썸네일이 있는 것 우선 추출
+            for (const ent of entries) {
+                const t = getEntryThumbnail(ent);
+                if (t) {
+                    resolvedThumbUrl = t;
+                    break;
+                }
+            }
+
+            // 2. 썸네일이 발견되면 즉시 표시, 미디어가 전혀 없는 순수 글일 때만 점(Dot) 표시
+            if (resolvedThumbUrl) {
+                thumbHtml = `<img src="${resolvedThumbUrl}" class="cal-thumb" alt="thumb" onerror="this.style.display='none'">`;
             } else if (entries.length > 0) {
                 thumbHtml = `<div class="cal-dot"></div>`;
             }
@@ -965,7 +1051,11 @@
                 b.classList.toggle('selected', b.dataset.val === selectedWeather);
             });
 
-            pendingMediaFiles = (entry.media || []).map(m => ({ ...m }));
+            // 수정 시 기존 미디어의 microThumb가 소실되지 않도록 완벽 보존
+            pendingMediaFiles = (entry.media || []).map((m, idx) => ({
+                ...m,
+                microThumb: m.microThumb || (idx === 0 ? entry.microThumb : '') || m.thumb || ''
+            }));
             renderPreviewThumbs();
             saveBtn.innerText = "수정 완료";
         } else {
@@ -1219,9 +1309,24 @@
         saveBtn.innerText = "저장 중...";
 
         try {
+            // [방어 로직] 썸네일 다계층 보존 및 생성
             let microThumb = "";
             if (pendingMediaFiles.length > 0) {
                 microThumb = pendingMediaFiles[0].microThumb || pendingMediaFiles[0].thumb || "";
+                
+                // 기존 수정 중인데 microThumb가 누락된 경우 기존 entry 보존
+                if (!microThumb && currentEditingId) {
+                    const prevEntry = journalDB.find(e => e.id === currentEditingId);
+                    if (prevEntry && prevEntry.microThumb) {
+                        microThumb = prevEntry.microThumb;
+                    }
+                }
+                
+                // 그래도 비어있다면 첫 번째 이미지 원본에서 즉시 동적 생성
+                if (!microThumb) {
+                    const rawSrc = getCrispImageSource(pendingMediaFiles[0]);
+                    microThumb = await generateMicroThumb(rawSrc);
+                }
             }
 
             const nowTimestamp = Date.now();
@@ -1239,7 +1344,8 @@
                         base64: m.base64 || "",
                         viewUrl: m.viewUrl || "",
                         thumbUrl: m.thumbUrl || "",
-                        thumb: m.thumb || ""
+                        thumb: m.thumb || "",
+                        microThumb: m.microThumb || ""
                     }));
                     journalDB[idx].microThumb = microThumb;
                     journalDB[idx].updatedAt = nowTimestamp;
@@ -1263,7 +1369,8 @@
                         base64: m.base64 || "",
                         viewUrl: m.viewUrl || "",
                         thumbUrl: m.thumbUrl || "",
-                        thumb: m.thumb || ""
+                        thumb: m.thumb || "",
+                        microThumb: m.microThumb || ""
                     })),
                     microThumb: microThumb,
                     updatedAt: nowTimestamp
@@ -1277,7 +1384,6 @@
             renderTimeline();
             closeEntryModal();
 
-            // 백엔드 동기화 및 오프라인 큐 삽입
             if (savedEntry) {
                 const syncPayload = { action: 'SAVE_ENTRY', ...savedEntry };
                 enqueueSyncAction(syncPayload);
@@ -1412,6 +1518,7 @@
                     saveToIndexedDB(journalDB);
                     renderCalendar();
                     renderTimeline();
+                    autoHealMissingThumbnails();
                     alert("데이터 복원이 완료되었습니다.");
                     closeBackupSheet();
                 }
