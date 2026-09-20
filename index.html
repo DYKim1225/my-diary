@@ -59,7 +59,7 @@
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         .calendar-section {
-            padding-top: calc(26px + env(safe-area-inset-top));
+            padding-top: calc(24px + env(safe-area-inset-top));
             padding-left: 16px;
             padding-right: 16px;
             padding-bottom: 12px;
@@ -70,20 +70,75 @@
             z-index: 10;
             flex-shrink: 0;
         }
+
+        /* [개선] 절대 밀리지 않는 가로 1열 헤더 레이아웃 */
         .cal-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            white-space: nowrap;
+            width: 100%;
         }
-        .cal-title-box { display: flex; align-items: baseline; gap: 6px; }
-        .cal-title { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
-        .cal-version { font-size: 10px; font-weight: 600; color: var(--primary); background: rgba(0,122,255,0.1); padding: 2px 5px; border-radius: 4px; }
-        .cal-actions { display: flex; gap: 6px; align-items: center; }
-        .cal-btn {
-            background: var(--chip-bg); border: none; border-radius: 10px;
-            padding: 6px 11px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-main);
+        .cal-title-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .cal-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.4px;
+            color: var(--text-main);
+            white-space: nowrap;
+        }
+        .cal-today-pill {
+            background: rgba(0,122,255,0.09);
+            border: none;
+            border-radius: 12px;
+            padding: 4px 9px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--primary);
+            cursor: pointer;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cal-actions-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        .cal-arrow-btn {
+            background: var(--chip-bg);
+            border: none;
+            border-radius: 10px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+            cursor: pointer;
+            line-height: 1;
         }
         .icon-btn {
-            background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px 6px;
+            background: none;
+            border: none;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            cursor: pointer;
+            padding: 0;
         }
 
         .cal-board {
@@ -149,11 +204,11 @@
         .timeline-header {
             display: flex; justify-content: space-between; align-items: center;
         }
-        .timeline-date-title { font-size: 17px; font-weight: 700; }
+        .timeline-date-title { font-size: 17px; font-weight: 700; white-space: nowrap; }
         .add-entry-btn {
             background: var(--primary); color: white; border: none; border-radius: 18px;
             padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
-            display: flex; align-items: center; gap: 4px;
+            display: flex; align-items: center; gap: 4px; white-space: nowrap;
         }
 
         .entry-card {
@@ -198,7 +253,6 @@
             position: relative; width: 100%; padding-top: 100%; border-radius: 10px;
             overflow: hidden; background: #E5E5EA; cursor: pointer;
         }
-        /* [중요] 모자이크를 유발하던 -webkit-optimize-contrast 완전 제거 */
         .media-item img {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
             transform: translateZ(0);
@@ -335,15 +389,15 @@
     </div>
 
     <div class="calendar-section" id="calSection">
+        <!-- [개선] 1년 12개월 어떤 날짜에서도 절대 밀리지 않는 가로 1열 헤더 -->
         <div class="cal-header">
-            <button class="cal-btn" onclick="changeMonth(-1)">◀ 이전</button>
-            <div class="cal-title-box">
+            <div class="cal-title-group">
                 <div class="cal-title" id="calMonthTitle">2026년 9월</div>
-                <span class="cal-version" id="appVersionBadge">v2.3</span>
+                <button class="cal-today-pill" onclick="goToday()">오늘</button>
             </div>
-            <div class="cal-actions">
-                <button class="cal-btn" onclick="goToday()">오늘</button>
-                <button class="cal-btn" onclick="changeMonth(1)">다음 ▶</button>
+            <div class="cal-actions-group">
+                <button class="cal-arrow-btn" onclick="changeMonth(-1)" title="이전 달">‹</button>
+                <button class="cal-arrow-btn" onclick="changeMonth(1)" title="다음 달">›</button>
                 <button class="icon-btn" onclick="toggleSearch(true)" title="검색">🔍</button>
                 <button class="icon-btn" onclick="openBackupSheet()" title="설정 및 관리">⚙️</button>
             </div>
@@ -415,23 +469,26 @@
     <div class="modal-overlay" id="backupModal">
         <div class="modal-sheet">
             <div class="modal-header">
-                <span>앱 설정 및 데이터 보관</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span>설정 및 데이터 보관</span>
+                    <span style="font-size:11px; color:var(--primary); background:rgba(0,122,255,0.1); padding:2px 6px; border-radius:6px; font-weight:700;">v2.4 최신</span>
+                </div>
                 <button class="modal-close" onclick="closeBackupSheet()">닫기</button>
             </div>
             
-            <button class="cal-btn" style="padding:12px; font-size:13px; background:#FF9500; color:white;" onclick="forceAppUpdate()">
+            <button class="cal-today-pill" style="width:100%; padding:13px; font-size:13px; background:#FF9500; color:white;" onclick="forceAppUpdate()">
                 ⚡ 최신 버전 강제 업데이트 (캐시 초기화)
             </button>
             <div style="font-size:11px; color:var(--text-sub); line-height:1.4;">
-                화면 상단에 [v2.3] 배지가 보이지 않거나 화면이 갱신되지 않을 때 눌러주시면 즉시 최신 엔진으로 갱신됩니다.
+                화면 갱신이 필요하거나 이전 캐시가 남아있을 때 눌러주시면 즉시 최신 엔진으로 갱신됩니다.
             </div>
 
-            <div style="border-top:1px solid var(--line); margin: 4px 0;"></div>
+            <div style="border-top:1px solid var(--line); margin: 6px 0;"></div>
 
-            <button class="cal-btn" style="padding:12px; font-size:14px; background:var(--primary); color:white;" onclick="exportBackupData()">
+            <button class="cal-today-pill" style="width:100%; padding:13px; font-size:14px; background:var(--primary); color:white;" onclick="exportBackupData()">
                 📥 일기 전체 백업 다운로드 (.json)
             </button>
-            <button class="cal-btn" style="padding:12px; font-size:14px;" onclick="document.getElementById('restoreFileInput').click()">
+            <button class="cal-today-pill" style="width:100%; padding:13px; font-size:14px; background:var(--chip-bg); color:var(--text-main);" onclick="document.getElementById('restoreFileInput').click()">
                 📤 백업 파일에서 복원하기
             </button>
             <input type="file" id="restoreFileInput" accept=".json" style="display:none;" onchange="importBackupData(event)">
@@ -444,10 +501,9 @@
     </div>
 
 <script>
-    const APP_CURRENT_VERSION = "2.3";
+    const APP_CURRENT_VERSION = "2.4";
     const GOOGLE_APP_URL = "https://script.google.com/macros/s/AKfycbwqB0jX942QF3Epg5-r-s33DYpoGIvDJ27r2aJWILew1mYq1m0NcZ_n2EA-Ng2nnlc/exec";
 
-    // PWA 자동 캐시 버스팅
     const storedVer = localStorage.getItem('myDiaryBuildVer');
     if (storedVer !== APP_CURRENT_VERSION) {
         localStorage.setItem('myDiaryBuildVer', APP_CURRENT_VERSION);
@@ -491,18 +547,12 @@
         }
     }
 
-    // =========================================================================
-    // [핵심] 고화질 이미지 전용 리졸버 (44px 썸네일 진입 원천 봉쇄)
-    // =========================================================================
     function getCardHighResSource(m) {
         if (!m) return '';
         const b64 = m.base64 || '';
-        
-        // 1. 고화질 Base64 우선 반환 (6,000자 초과 데이터)
         if (b64.startsWith('data:image') && b64.length > 6000) {
             return b64;
         }
-        // 2. 구글 드라이브 고화질 원본 URL
         if (m.viewUrl && m.viewUrl.startsWith('http')) {
             return m.viewUrl;
         }
@@ -520,7 +570,6 @@
         return '';
     }
 
-    // [캘린더 전용] 44px 초미니 도트 탐색기
     function getCalendarThumbnail(entry) {
         if (!entry) return '';
         if (entry.microThumb && entry.microThumb.length > 50) return entry.microThumb;
@@ -533,9 +582,6 @@
         return '';
     }
 
-    // =========================================================================
-    // INDEXEDDB ENGINE
-    // =========================================================================
     const IDB_NAME = 'MyDiaryIDB';
     const IDB_STORE = 'diary_entries';
     const IDB_QUEUE = 'sync_queue';
@@ -976,7 +1022,6 @@
         renderTimeline();
     }
 
-    // [보장] 타임라인 렌더링: 900px 고화질 원본만 렌더링
     function renderTimeline() {
         const parts = activeDateStr.split('-');
         const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -1097,7 +1142,6 @@
                 b.classList.toggle('selected', b.dataset.val === selectedWeather);
             });
 
-            // 수정 시 원본 미디어 정보 보존
             pendingMediaFiles = (entry.media || []).map(m => ({ ...m }));
             renderPreviewThumbs();
             saveBtn.innerText = "수정 완료";
@@ -1227,7 +1271,6 @@
             for (const file of files) {
                 if (file.type.startsWith('image/')) {
                     const res = await processImage(file);
-                    // 개별 미디어 객체에는 44px 썸네일을 넣지 않고 고화질 원본만 보관
                     pendingMediaFiles.push({
                         type: 'image',
                         base64: res.compressedBase64
@@ -1263,7 +1306,6 @@
         });
     }
 
-    // [최적화] Canvas 고품질 바이큐빅 스무딩으로 900px 고화질 압축
     function processImage(file) {
         return new Promise(resolve => {
             const reader = new FileReader();
@@ -1336,9 +1378,6 @@
         renderPreviewThumbs();
     }
 
-    // =========================================================================
-    // 일기 저장
-    // =========================================================================
     async function saveEntry() {
         const content = document.getElementById('journalContent').value.trim();
         const hasMedia = pendingMediaFiles.length > 0;
@@ -1355,7 +1394,6 @@
         saveBtn.innerText = "저장 중...";
 
         try {
-            // 캘린더 전용 44px 썸네일은 최상위 microThumb 단 1곳에만 안전하게 생성
             let microThumb = "";
             if (pendingMediaFiles.length > 0) {
                 const firstMediaSrc = pendingMediaFiles[0].base64 || pendingMediaFiles[0].thumb || "";
@@ -1409,18 +1447,12 @@
                 journalDB.unshift(savedEntry);
             }
 
-            // 1. IndexedDB에 영구 보존
             await saveToIndexedDB(journalDB);
-
-            // 2. 로컬스토리지 캐시 저장
             saveToLocalStorage(journalDB);
-
-            // 3. 화면 즉시 렌더링
             renderCalendar();
             renderTimeline();
             closeEntryModal();
 
-            // 4. 백그라운드 큐 등록 및 구글 시트 전송
             if (savedEntry) {
                 const syncPayload = { action: 'SAVE_ENTRY', ...savedEntry };
                 await enqueueSyncAction(syncPayload);
@@ -1511,9 +1543,6 @@
         document.getElementById('lightbox').classList.remove('active');
     }
 
-    // =========================================================================
-    // 설정 및 강제 업데이트 모듈
-    // =========================================================================
     function openBackupSheet() {
         document.getElementById('backupModal').classList.add('active');
     }
@@ -1522,9 +1551,8 @@
         document.getElementById('backupModal').classList.remove('active');
     }
 
-    // PWA 강제 하드 리로드 및 캐시 무효화
     function forceAppUpdate() {
-        if (confirm("최신 버전(v2.3)으로 강제 업데이트하고 화면을 새로고침할까요?")) {
+        if (confirm("최신 버전(v2.4)으로 강제 업데이트하고 화면을 새로고침할까요?")) {
             localStorage.setItem('myDiaryBuildVer', APP_CURRENT_VERSION);
             if ('caches' in window) {
                 caches.keys().then(names => {
