@@ -4,13 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>나의 일기</title>
-    <meta name="apple-mobile-web-app-title" content="나의 일기">
     <link rel="apple-touch-icon" sizes="180x180" href="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=512&h=512&q=80">
     <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=512&h=512&q=80">
     <style>
-        * { box-sizing: border-box; touch-action: manipulation; }
+        * { box-sizing: border-box; touch-action: manipulation; margin: 0; padding: 0; }
         :root {
             --bg: #F2F2F7;
             --card: #FFFFFF;
@@ -19,1372 +17,429 @@
             --text-sub: #8E8E93;
             --line: #E5E5EA;
             --chip-bg: #F2F2F7;
-            --cal-board-bg: #F6F7F9;
-            --cal-board-border: #E8EAED;
         }
-        
         html, body {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            width: 100%; height: 100%;
-            height: 100dvh;
-            margin: 0; padding: 0;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg);
-            color: var(--text-main);
-            display: flex; flex-direction: column;
+            width: 100%; height: 100%; height: 100dvh;
+            overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg); color: var(--text-main); display: flex; flex-direction: column;
             -webkit-tap-highlight-color: transparent;
-            overscroll-behavior: none;
         }
 
-        .pull-refresh-indicator {
-            position: absolute;
-            top: 0; left: 0; right: 0;
+        /* 풀투리프레시 인디케이터 */
+        .pull-bar {
+            position: absolute; top: 0; left: 0; right: 0;
             height: calc(44px + env(safe-area-inset-top));
             padding-top: env(safe-area-inset-top);
-            background: var(--card);
-            border-bottom: 1px solid var(--line);
+            background: var(--card); border-bottom: 1px solid var(--line);
             display: flex; align-items: center; justify-content: center; gap: 6px;
             font-size: 12px; font-weight: 600; color: var(--text-sub);
-            transform: translateY(-100%);
-            transition: transform 0.2s ease, opacity 0.2s ease;
-            z-index: 100; pointer-events: none; opacity: 0;
+            transform: translateY(-100%); transition: transform 0.2s ease; z-index: 100;
         }
-        .pull-refresh-indicator.pulling { opacity: 1; transition: none; }
-        .pull-refresh-indicator.refreshing {
-            opacity: 1; transform: translateY(0); transition: transform 0.25s ease;
-        }
-        .pull-icon { display: inline-block; transition: transform 0.2s ease; font-size: 14px; }
-        .pull-refresh-indicator.ready .pull-icon { transform: rotate(180deg); }
-        .pull-refresh-indicator.refreshing .pull-icon { animation: spin 0.8s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .pull-bar.refreshing { transform: translateY(0); }
 
-        .calendar-section {
-            padding-top: calc(20px + env(safe-area-inset-top));
-            padding-left: 16px;
-            padding-right: 16px;
-            padding-bottom: 12px;
-            background: var(--card);
-            display: flex; flex-direction: column;
-            border-bottom: 1px solid var(--line);
-            box-shadow: 0 4px 14px rgba(0,0,0,0.03);
-            z-index: 10;
-            flex-shrink: 0;
+        /* 캘린더 영역 */
+        .cal-section {
+            background: var(--card); padding: calc(16px + env(safe-area-inset-top)) 16px 12px;
+            border-bottom: 1px solid var(--line); z-index: 10; flex-shrink: 0;
+        }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .cal-title-box { display: flex; align-items: center; gap: 8px; }
+        .cal-title { font-size: 20px; font-weight: 700; }
+        .today-btn {
+            background: rgba(0,122,255,0.1); border: none; border-radius: 12px;
+            padding: 4px 8px; font-size: 12px; font-weight: 700; color: var(--primary); cursor: pointer;
+        }
+        .cal-nav { display: flex; gap: 6px; }
+        .cal-nav button {
+            background: var(--chip-bg); border: none; border-radius: 10px;
+            width: 32px; height: 32px; font-size: 16px; font-weight: 700; cursor: pointer;
         }
 
-        .cal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 14px;
-            white-space: nowrap;
-            width: 100%;
-        }
-        .cal-title-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-        .cal-title {
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: -0.4px;
-            color: var(--text-main);
-            white-space: nowrap;
-        }
-        .cal-today-pill {
-            background: rgba(0,122,255,0.09);
-            border: none;
-            border-radius: 12px;
-            padding: 4px 9px;
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--primary);
-            cursor: pointer;
-            white-space: nowrap;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .cal-actions-group {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            flex-shrink: 0;
-        }
-        .cal-arrow-btn {
-            background: var(--chip-bg);
-            border: none;
-            border-radius: 10px;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-main);
-            cursor: pointer;
-            line-height: 1;
-        }
-        .icon-btn {
-            background: none;
-            border: none;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 17px;
-            cursor: pointer;
-            padding: 0;
-        }
-
-        .cal-board {
-            background-color: var(--cal-board-bg);
-            border: 1px solid var(--cal-board-border);
-            border-radius: 18px;
-            padding: 12px 8px 8px 8px;
-        }
-
-        .cal-days-header {
-            display: grid; grid-template-columns: repeat(7, 1fr);
-            text-align: center; font-size: 11px; font-weight: 600; color: var(--text-sub);
-            padding-bottom: 10px;
-            margin-bottom: 6px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-        }
-        
-        .cal-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            grid-auto-rows: 46px;
-            gap: 2px;
-            text-align: center;
-        }
+        .cal-board { background: #F6F7F9; border: 1px solid #E8EAED; border-radius: 16px; padding: 10px 6px 6px; }
+        .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11px; font-weight: 600; color: var(--text-sub); margin-bottom: 6px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 44px; gap: 2px; }
         .cal-cell {
-            position: relative; border-radius: 10px; display: flex; flex-direction: column;
-            align-items: center; justify-content: flex-start; padding: 3px 1px;
-            border: 1.5px solid transparent;
-            cursor: pointer; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-            height: 46px;
+            border-radius: 8px; display: flex; flex-direction: column; align-items: center;
+            justify-content: flex-start; padding: 2px; cursor: pointer;
         }
-        .cal-cell.today .cal-date-num { 
-            color: var(--primary); font-weight: 800;
+        .cal-cell.today .date-num { color: var(--primary); font-weight: 800; }
+        .cal-cell.selected { background: #FFFFFF; box-shadow: 0 0 0 2px var(--primary); }
+        .date-num { font-size: 12px; line-height: 14px; margin-bottom: 2px; }
+        .cal-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); margin-top: 4px; }
+        .cal-thumb { width: 20px; height: 20px; border-radius: 4px; object-fit: cover; }
+
+        /* 타임라인 영역 */
+        .timeline {
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 16px; padding-bottom: calc(50px + env(safe-area-inset-bottom));
+            display: flex; flex-direction: column; gap: 12px;
         }
-        .cal-cell.selected { 
-            background-color: #FFFFFF; 
-            border-color: var(--primary); 
-            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.16);
+        .timeline-header { display: flex; justify-content: space-between; align-items: center; }
+        .timeline-title { font-size: 17px; font-weight: 700; }
+        .timeline-btns { display: flex; gap: 6px; align-items: center; }
+        .icon-btn {
+            background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+            width: 32px; height: 32px; font-size: 15px; cursor: pointer;
         }
-        .cal-cell.has-search { box-shadow: 0 0 0 2px #FF9500 inset; }
-        .cal-date-num { 
-            font-size: 12px; line-height: 14px; margin-bottom: 2px; font-weight: 500; 
-        }
-        
-        .cal-thumb {
-            width: 20px; height: 20px; border-radius: 4px; object-fit: cover;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-            background-color: #E5E5EA;
-        }
-        .cal-dot {
-            width: 5px; height: 5px; border-radius: 50%; background: var(--primary);
-            margin-top: 4px;
+        .add-btn {
+            background: var(--primary); color: #FFF; border: none; border-radius: 16px;
+            padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
         }
 
-        .timeline-section {
-            flex: 1;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 16px;
-            padding-bottom: calc(50px + env(safe-area-inset-bottom));
-            display: flex; flex-direction: column; gap: 14px;
-        }
-        .timeline-header {
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .timeline-date-title { font-size: 17px; font-weight: 700; white-space: nowrap; }
-        
-        .timeline-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-        .timeline-setting-btn {
-            background: var(--card);
-            border: 1px solid var(--line);
-            border-radius: 18px;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            cursor: pointer;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-            transition: background 0.15s, transform 0.15s;
-        }
-        .timeline-setting-btn:active {
-            transform: scale(0.92);
-            background: var(--chip-bg);
-        }
-        .add-entry-btn {
-            background: var(--primary); color: white; border: none; border-radius: 18px;
-            padding: 7px 13px; font-size: 13px; font-weight: 600; cursor: pointer;
-            display: flex; align-items: center; gap: 4px; white-space: nowrap;
-        }
-
-        .entry-card {
+        /* 일기 카드 */
+        .card {
             background: var(--card); border-radius: 16px; padding: 14px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 10px;
-            position: relative;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 10px;
         }
-        .entry-top {
-            display: flex; justify-content: space-between; align-items: center; gap: 8px;
-        }
-        .entry-meta { 
-            display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--text-sub); 
-        }
-        .entry-meta strong, .entry-meta span, .entry-loc {
-            white-space: nowrap;
-        }
-        .entry-loc {
-            background: var(--chip-bg); padding: 3px 8px; border-radius: 6px;
-            font-size: 11px; color: var(--text-main); font-weight: 500; display: inline-flex; align-items: center; gap: 3px;
-        }
-        
-        .entry-actions {
-            display: flex; align-items: center; gap: 10px; flex-shrink: 0;
-        }
-        .entry-edit-btn { 
-            background: none; border: none; color: var(--primary); font-size: 12px; font-weight: 600; 
-            cursor: pointer; white-space: nowrap; padding: 0;
-        }
-        .entry-del-btn { 
-            background: none; border: none; color: #FF3B30; font-size: 12px; font-weight: 500; 
-            cursor: pointer; white-space: nowrap; padding: 0;
-        }
-        
-        .entry-content {
-            font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
-        }
-        
-        .media-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px;
-        }
-        .media-item {
-            position: relative; width: 100%; padding-top: 100%; border-radius: 10px;
+        .card-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+        .card-meta { display: flex; gap: 6px; align-items: center; color: var(--text-sub); }
+        .card-actions button { background: none; border: none; font-size: 12px; cursor: pointer; padding: 2px; }
+        .card-content { font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+
+        /* 사진 그리드 */
+        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        .photo-box {
+            position: relative; width: 100%; padding-top: 100%; border-radius: 8px;
             overflow: hidden; background: #E5E5EA; cursor: pointer;
         }
-        .media-item img {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
-            transform: translateZ(0);
-        }
-        .media-video-badge {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 32px; height: 32px; background: rgba(0,0,0,0.65); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;
-        }
+        .photo-box img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
 
-        .empty-timeline {
-            text-align: center; color: var(--text-sub); margin-top: 40px; font-size: 14px; line-height: 1.5;
+        /* 모달 공통 */
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none;
+            align-items: flex-end; z-index: 1000;
         }
-
-        .timeline-footer {
-            text-align: center;
-            padding: 24px 0 10px;
-        }
-        .timeline-footer-link {
-            background: none;
-            border: none;
-            font-size: 12px;
-            color: var(--text-sub);
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 4px 8px;
-        }
-
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.45); display: none; align-items: flex-end; z-index: 1000;
-        }
-        .modal-overlay.active { display: flex; }
+        .modal.active { display: flex; }
         .modal-sheet {
-            background: var(--card); width: 100%; max-height: 90vh;
-            border-radius: 20px 20px 0 0; padding: 20px 18px env(safe-area-inset-bottom);
-            overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
-            animation: slideUp 0.25s ease-out;
+            background: var(--card); width: 100%; max-height: 88vh; border-radius: 20px 20px 0 0;
+            padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+            overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
         }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
-        .modal-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
-        .modal-close { background: none; border: none; font-size: 15px; color: var(--text-sub); cursor: pointer; }
-        
-        .chip-group { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; }
-        .chip-btn {
-            background: var(--chip-bg); border: 1.5px solid transparent; border-radius: 14px;
-            padding: 6px 12px; font-size: 13px; cursor: pointer; white-space: nowrap;
+        .chip-row { display: flex; gap: 6px; overflow-x: auto; }
+        .chip {
+            background: var(--chip-bg); border: 1px solid transparent; border-radius: 14px;
+            padding: 6px 10px; font-size: 13px; cursor: pointer; white-space: nowrap;
         }
-        .chip-btn.selected { border-color: var(--primary); background: rgba(0,122,255,0.08); font-weight: 600; }
-
-        .loc-bar {
-            display: flex; gap: 8px; align-items: center; font-size: 12px;
+        .chip.active { border-color: var(--primary); background: rgba(0,122,255,0.08); font-weight: 600; }
+        .loc-row { display: flex; gap: 6px; }
+        .loc-row input { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 8px; font-size: 13px; }
+        .loc-row button { background: var(--chip-bg); border: none; border-radius: 8px; padding: 8px 12px; font-size: 12px; }
+        .textarea-box textarea {
+            width: 100%; height: 100px; border: 1px solid var(--line); border-radius: 10px;
+            padding: 10px; font-size: 14px; resize: none; outline: none; font-family: inherit;
         }
-        .loc-input {
-            flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px;
-        }
-        .loc-btn {
-            background: var(--chip-bg); border: none; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer;
-        }
-
-        .input-box-wrapper { position: relative; }
-        .journal-textarea {
-            width: 100%; height: 110px; border: 1px solid var(--line); border-radius: 12px;
-            padding: 12px; font-size: 14px; font-family: inherit; resize: none; outline: none;
-        }
-        .journal-textarea:focus { border-color: var(--primary); }
-        .voice-btn {
-            position: absolute; right: 10px; bottom: 12px;
-            background: var(--chip-bg); border: none; border-radius: 50%; width: 34px; height: 34px;
-            display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;
-        }
-        .voice-btn.recording { background: #FF3B30; color: white; animation: pulse 1.2s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-
-        .media-picker-bar {
-            display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--text-sub);
-        }
-        .pick-btn {
-            background: var(--chip-bg); border: none; border-radius: 10px; padding: 8px 12px;
-            font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-main);
-        }
-        .preview-thumbs { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; min-height: 50px; }
-        .preview-thumb-box {
-            position: relative; width: 50px; height: 50px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
-            background: #E5E5EA;
-        }
-        .preview-thumb-box img { width: 100%; height: 100%; object-fit: cover; }
-        .preview-video-tag {
-            position: absolute; bottom: 2px; left: 2px; font-size: 9px; background: rgba(0,0,0,0.6);
-            color: white; border-radius: 3px; padding: 1px 3px;
-        }
+        .media-previews { display: flex; gap: 8px; overflow-x: auto; min-height: 50px; }
+        .preview-box { position: relative; width: 50px; height: 50px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+        .preview-box img { width: 100%; height: 100%; object-fit: cover; }
         .preview-del {
-            position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white;
-            border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px;
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: #FFF;
+            border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; cursor: pointer;
         }
-
-        .save-btn {
-            background: var(--primary); color: white; border: none; border-radius: 12px;
+        .submit-btn {
+            background: var(--primary); color: #FFF; border: none; border-radius: 12px;
             padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer;
-            transition: opacity 0.2s;
         }
-        .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .search-modal {
-            position: fixed; top: 0; left: 0; right: 0; background: var(--card);
-            border-bottom: 1px solid var(--line); padding: 12px 16px;
-            padding-top: calc(16px + env(safe-area-inset-top));
-            display: none; flex-direction: column; gap: 8px; z-index: 500;
-        }
-        .search-modal.active { display: flex; }
-        .search-input-box {
-            display: flex; gap: 8px; align-items: center;
-        }
-        .search-input {
-            flex: 1; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; outline: none;
-        }
-        .search-close { background: none; border: none; font-size: 14px; color: var(--primary); cursor: pointer; }
-        .search-results { max-height: 180px; overflow-y: auto; font-size: 13px; }
-        .search-item { padding: 6px 0; border-bottom: 1px solid var(--chip-bg); cursor: pointer; }
-
+        /* 라이트박스 */
         .lightbox {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95);
-            display: none; align-items: center; justify-content: center; z-index: 2000;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: none;
+            align-items: center; justify-content: center; z-index: 2000;
         }
         .lightbox.active { display: flex; }
         .lightbox img { max-width: 95%; max-height: 85%; border-radius: 8px; object-fit: contain; }
-        .lightbox video { max-width: 95%; max-height: 85%; border-radius: 8px; outline: none; }
-        .lightbox-close {
-            position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; color: white; font-size: 26px; background: none; border: none; cursor: pointer; z-index: 2010;
-        }
     </style>
 </head>
 <body>
 
-    <div class="pull-refresh-indicator" id="pullIndicator">
-        <span class="pull-icon">↓</span>
-        <span id="pullText">당겨서 새로고침</span>
+    <!-- 풀투리프레시 -->
+    <div class="pull-bar" id="pullBar">
+        <span id="pullText">데이터 동기화 중...</span>
     </div>
 
-    <div class="search-modal" id="searchModal">
-        <div class="search-input-box">
-            <input type="text" class="search-input" id="searchInput" placeholder="기억하고 싶은 단어 검색" oninput="onSearch()">
-            <button class="search-close" onclick="toggleSearch(false)">닫기</button>
-        </div>
-        <div class="search-results" id="searchResults"></div>
-    </div>
-
-    <div class="calendar-section" id="calSection">
+    <!-- 캘린더 네비게이션 -->
+    <div class="cal-section">
         <div class="cal-header">
-            <div class="cal-title-group">
-                <div class="cal-title" id="calMonthTitle">2026년 9월</div>
-                <button class="cal-today-pill" onclick="goToday()">오늘</button>
+            <div class="cal-title-box">
+                <div class="cal-title" id="calTitle">2026년 9월</div>
+                <button class="today-btn" onclick="goToday()">오늘</button>
             </div>
-            <div class="cal-actions-group">
-                <button class="cal-arrow-btn" onclick="changeMonth(-1)" title="이전 달">‹</button>
-                <button class="cal-arrow-btn" onclick="changeMonth(1)" title="다음 달">›</button>
-                <button class="icon-btn" onclick="toggleSearch(true)" title="검색">🔍</button>
+            <div class="cal-nav">
+                <button onclick="changeMonth(-1)">‹</button>
+                <button onclick="changeMonth(1)">›</button>
             </div>
         </div>
-
         <div class="cal-board">
-            <div class="cal-days-header">
+            <div class="cal-weekdays">
                 <span style="color:#FF3B30;">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
             </div>
-            <div class="cal-grid" id="calendarGrid"></div>
+            <div class="cal-grid" id="calGrid"></div>
         </div>
     </div>
 
-    <div class="timeline-section" id="timelineSection">
+    <!-- 타임라인 -->
+    <div class="timeline" id="timelineList">
         <div class="timeline-header">
-            <div class="timeline-date-title" id="timelineDateTitle">2026년 9월 20일 (일)</div>
-            <div class="timeline-actions">
-                <button class="timeline-setting-btn" onclick="openBackupSheet()" title="설정 및 데이터 관리">⚙️</button>
-                <button class="add-entry-btn" onclick="openEntryModal()"><span>➕</span>기록 쓰기</button>
+            <div class="timeline-title" id="timelineTitle">2026년 9월 17일 (목)</div>
+            <div class="timeline-btns">
+                <button class="icon-btn" onclick="openBackup()" title="백업 및 설정">⚙️</button>
+                <button class="add-btn" onclick="openModal()">➕ 기록 쓰기</button>
             </div>
         </div>
-        <div id="timelineCards"></div>
+        <div id="cardContainer"></div>
     </div>
 
-    <div class="modal-overlay" id="entryModal">
+    <!-- 작성/수정 모달 -->
+    <div class="modal" id="entryModal">
         <div class="modal-sheet">
-            <div class="modal-header">
-                <span id="modalDateLabel">새 일기 기록</span>
-                <button class="modal-close" onclick="closeEntryModal()">취소</button>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong id="modalTitle">새 기록 쓰기</strong>
+                <button onclick="closeModal()" style="background:none; border:none; color:var(--text-sub); font-size:14px;">취소</button>
             </div>
-
-            <div style="font-size:12px; font-weight:600; color:var(--text-sub);">오늘의 기분 (선택)</div>
-            <div class="chip-group" id="moodChips">
-                <button class="chip-btn" data-val="😊 좋음">😊 좋음</button>
-                <button class="chip-btn" data-val="😌 평온">😌 평온</button>
-                <button class="chip-btn" data-val="🍷 여유">🍷 여유</button>
-                <button class="chip-btn" data-val="🏃 활기">🏃 활기</button>
-                <button class="chip-btn" data-val="🥱 피곤">🥱 피곤</button>
+            <div class="chip-row" id="moodRow">
+                <button class="chip" data-v="😊 좋음">😊 좋음</button>
+                <button class="chip" data-v="😌 평온">😌 평온</button>
+                <button class="chip" data-v="🍷 여유">🍷 여유</button>
+                <button class="chip" data-v="🏃 활기">🏃 활기</button>
+                <button class="chip" data-v="🥱 피곤">🥱 피곤</button>
             </div>
-
-            <div style="font-size:12px; font-weight:600; color:var(--text-sub);">오늘의 날씨 (선택)</div>
-            <div class="chip-group" id="weatherChips">
-                <button class="chip-btn" data-val="☀️ 맑음">☀️ 맑음</button>
-                <button class="chip-btn" data-val="⛅ 구름">⛅ 구름</button>
-                <button class="chip-btn" data-val="🌧️ 비">🌧️ 비</button>
-                <button class="chip-btn" data-val="❄️ 눈">❄️ 눈</button>
+            <div class="chip-row" id="weatherRow">
+                <button class="chip" data-v="☀️ 맑음">☀️ 맑음</button>
+                <button class="chip" data-v="⛅ 구름">⛅ 구름</button>
+                <button class="chip" data-v="🌧️ 비">🌧️ 비</button>
+                <button class="chip" data-v="❄️ 눈">❄️ 눈</button>
             </div>
-
-            <div class="loc-bar">
-                <span>📍</span>
-                <input type="text" id="locInput" class="loc-input" placeholder="위치 (예: 서울 강남구)">
-                <button class="loc-btn" onclick="fetchCurrentLocation()">현위치</button>
+            <div class="loc-row">
+                <input type="text" id="locInput" placeholder="위치 (예: 서울 송파구)">
+                <button onclick="fetchLocation()">현위치</button>
             </div>
-
-            <div class="input-box-wrapper">
-                <textarea id="journalContent" class="journal-textarea" placeholder="오늘 어떤 일이 있었나요? 마이크를 탭하면 말하는 즉시 실시간 입력됩니다."></textarea>
-                <button class="voice-btn" id="voiceBtn" onclick="toggleSpeech()">🎙️</button>
+            <div class="textarea-box">
+                <textarea id="contentText" placeholder="오늘 어떤 일이 있었나요?"></textarea>
             </div>
-
-            <div class="media-picker-bar">
-                <button class="pick-btn" onclick="document.getElementById('filePicker').click()">📷 사진/영상 추가 (최대 10개)</button>
-                <input type="file" id="filePicker" accept="image/*,video/*" multiple style="display:none;" onchange="handleFileSelect(event)">
-                <span id="fileCountLabel">0개 선택됨</span>
+            <div>
+                <button class="chip" onclick="document.getElementById('fileInput').click()">📷 사진 추가 (최대 10장)</button>
+                <input type="file" id="fileInput" accept="image/*" multiple style="display:none;" onchange="handleFiles(event)">
             </div>
-            <div class="preview-thumbs" id="previewThumbs"></div>
-
-            <button class="save-btn" id="saveBtn" onclick="saveEntry()">저장하기</button>
+            <div class="media-previews" id="previewContainer"></div>
+            <button class="submit-btn" id="submitBtn" onclick="saveEntry()">저장하기</button>
         </div>
     </div>
 
-    <!-- 백업 및 관리 모달 -->
-    <div class="modal-overlay" id="backupModal">
+    <!-- 백업/설정 모달 -->
+    <div class="modal" id="backupModal">
         <div class="modal-sheet">
-            <div class="modal-header">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span>설정 및 데이터 보관</span>
-                    <span style="font-size:11px; color:var(--primary); background:rgba(0,122,255,0.1); padding:2px 6px; border-radius:6px; font-weight:700;">v3.0 안정화</span>
-                </div>
-                <button class="modal-close" onclick="closeBackupSheet()">닫기</button>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong>데이터 백업 및 설정</strong>
+                <button onclick="document.getElementById('backupModal').classList.remove('active')" style="background:none; border:none; font-size:14px;">닫기</button>
             </div>
-            
-            <div id="storageStatusBox" style="font-size:12px; color:var(--text-sub); line-height:1.5; background:var(--chip-bg); padding:10px; border-radius:10px;">
-                데이터 무결성 검증 완료.
-            </div>
-
-            <button class="cal-today-pill" style="width:100%; padding:13px; font-size:13px; background:#FF9500; color:white;" onclick="forceAppUpdate()">
-                ⚡ 최신 버전 강제 업데이트 (캐시 초기화)
-            </button>
-            
-            <div style="border-top:1px solid var(--line); margin: 6px 0;"></div>
-
-            <button class="cal-today-pill" style="width:100%; padding:13px; font-size:14px; background:var(--primary); color:white;" onclick="exportBackupData()">
-                📥 일기 전체 백업 다운로드 (.json)
-            </button>
-            <button class="cal-today-pill" style="width:100%; padding:13px; font-size:14px; background:var(--chip-bg); color:var(--text-main);" onclick="document.getElementById('restoreFileInput').click()">
-                📤 백업 파일에서 복원하기
-            </button>
-            <input type="file" id="restoreFileInput" accept=".json" style="display:none;" onchange="importBackupData(event)">
+            <button class="submit-btn" onclick="exportData()">📥 데이터 백업 다운로드 (.json)</button>
+            <button class="chip" style="padding:14px; text-align:center;" onclick="document.getElementById('importInput').click()">📤 백업 파일에서 복원하기</button>
+            <input type="file" id="importInput" accept=".json" style="display:none;" onchange="importData(event)">
         </div>
     </div>
 
-    <div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
-        <button class="lightbox-close" onclick="forceCloseLightbox()">✕</button>
-        <div id="lightboxContent" style="display:flex; justify-content:center; align-items:center; width:100%; height:100%;"></div>
+    <!-- 라이트박스 -->
+    <div class="lightbox" id="lightbox" onclick="this.classList.remove('active')">
+        <img id="lightboxImg" src="" alt="확대">
     </div>
 
 <script>
-    const APP_CURRENT_VERSION = "3.0";
-    const GOOGLE_APP_URL = "https://script.google.com/macros/s/AKfycbwqB0jX942QF3Epg5-r-s33DYpoGIvDJ27r2aJWILew1mYq1m0NcZ_n2EA-Ng2nnlc/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwqB0jX942QF3Epg5-r-s33DYpoGIvDJ27r2aJWILew1mYq1m0NcZ_n2EA-Ng2nnlc/exec";
+    
+    // 상태 관리
+    let diaryEntries = [];
+    let activeDate = formatDate(new Date());
+    let viewYear = new Date().getFullYear();
+    let viewMonth = new Date().getMonth();
+    let currentEditId = null;
+    let tempPhotos = [];
+    let selMood = "", selWeather = "";
 
-    let todayObj = new Date();
-    let currentYear = todayObj.getFullYear();
-    let currentMonth = todayObj.getMonth();
-    let activeDateStr = getLocalIsoDate(todayObj);
-
-    let journalDB = JSON.parse(localStorage.getItem('myJournalDB') || "[]");
-    let pendingMediaFiles = [];
-    let isRecording = false;
-    let recognition = null;
-    let baseSpeechText = "";
-    let speechTimer = null;
-    let selectedMood = "";
-    let selectedWeather = "";
-    let currentEditingId = null;
-    let isSyncingQueue = false;
-
-    function getLocalIsoDate(d) {
-        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    function formatDate(d) {
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
 
-    function formatDisplayTime(timeStr) {
-        if (!timeStr) return '';
-        const match = String(timeStr).match(/(\d{1,2}:\d{2})/);
-        return match ? match[1] : timeStr;
-    }
+    // ==========================================
+    // 1. 순수 IndexedDB 스토리지 엔진
+    // ==========================================
+    const DB_NAME = 'CleanDiaryDB';
+    const DB_STORE = 'entries';
 
-    function refreshSystemDate() {
-        const freshNow = new Date();
-        const freshDateStr = getLocalIsoDate(freshNow);
-        const oldTodayStr = getLocalIsoDate(todayObj);
-        todayObj = freshNow;
-        if (freshDateStr !== oldTodayStr && activeDateStr === oldTodayStr) {
-            activeDateStr = freshDateStr;
-            currentYear = freshNow.getFullYear();
-            currentMonth = freshNow.getMonth();
-        }
-    }
-
-    // =========================================================================
-    // [보장] 개별 미디어 전용 이미지 소스 리졸버
-    // =========================================================================
-    function getCardImageSource(m) {
-        if (!m) return '';
-        // 1. 기기 로컬의 고화질 Base64 우선 (0초 즉각 렌더링)
-        if (m.base64 && m.base64.startsWith('data:image') && m.base64.length > 1000) {
-            return m.base64;
-        }
-        // 2. 구글 드라이브 정규 원본 URL (안전한 정규 썸네일)
-        if (m.viewUrl && m.viewUrl.startsWith('http')) {
-            return m.viewUrl;
-        }
-        if (m.thumbUrl && m.thumbUrl.startsWith('http')) {
-            return m.thumbUrl;
-        }
-        // 3. 해당 사진 자체의 썸네일 (절대 다른 사진의 썸네일을 쓰지 않음)
-        if (m.microThumb && m.microThumb.startsWith('data:image')) {
-            return m.microThumb;
-        }
-        return m.base64 || m.viewUrl || '';
-    }
-
-    function getVideoPoster(m) {
-        if (!m) return '';
-        if (m.thumb && m.thumb.length > 1000) return m.thumb;
-        if (m.thumbUrl && m.thumbUrl.startsWith('http')) return m.thumbUrl;
-        if (m.base64 && m.base64.startsWith('data:image')) return m.base64;
-        return '';
-    }
-
-    function getCalendarThumbnail(entry) {
-        if (!entry) return '';
-        if (entry.microThumb && entry.microThumb.length > 50) return entry.microThumb;
-        if (entry.media && entry.media.length > 0) {
-            const first = entry.media[0];
-            if (first.microThumb && first.microThumb.length > 50) return first.microThumb;
-            if (first.base64 && first.base64.length > 1000) return first.base64;
-            if (first.thumbUrl) return first.thumbUrl;
-            if (first.viewUrl) return first.viewUrl;
-        }
-        return '';
-    }
-
-    // =========================================================================
-    // INDEXEDDB ENGINE (Primary Immutable Authority Database)
-    // =========================================================================
-    const IDB_NAME = 'MyDiaryIDB';
-    const IDB_STORE = 'diary_entries';
-    const IDB_QUEUE = 'sync_queue';
-    const IDB_VERSION = 2;
-
-    function initIDB() {
-        return new Promise((resolve) => {
-            if (!window.indexedDB) { resolve(null); return; }
-            const req = indexedDB.open(IDB_NAME, IDB_VERSION);
-            req.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(IDB_STORE)) {
-                    db.createObjectStore(IDB_STORE, { keyPath: 'id' });
-                }
-                if (!db.objectStoreNames.contains(IDB_QUEUE)) {
-                    db.createObjectStore(IDB_QUEUE, { autoIncrement: true, keyPath: 'queueId' });
-                }
-            };
+    function openDB() {
+        return new Promise(resolve => {
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE, { keyPath: 'id' });
             req.onsuccess = () => resolve(req.result);
             req.onerror = () => resolve(null);
         });
     }
 
-    async function loadFromIndexedDB() {
-        try {
-            const db = await initIDB();
-            if (!db) return null;
-            return new Promise((resolve) => {
-                const tx = db.transaction(IDB_STORE, 'readonly');
-                const store = tx.objectStore(IDB_STORE);
-                const req = store.getAll();
-                req.onsuccess = () => resolve(req.result || []);
-                req.onerror = () => resolve(null);
-            });
-        } catch (e) { return null; }
-    }
-
-    // [중요] Base64 영구 보존 저장
-    async function saveToIndexedDB(entries) {
-        try {
-            const db = await initIDB();
-            if (!db) return;
-            const tx = db.transaction(IDB_STORE, 'readwrite');
-            const store = tx.objectStore(IDB_STORE);
-            for (const item of entries) {
-                if (item && item.id) store.put(item);
-            }
-        } catch (e) { console.warn("IDB 저장 오류:", e); }
-    }
-
-    async function deleteFromIndexedDB(id) {
-        try {
-            const db = await initIDB();
-            if (!db) return;
-            const tx = db.transaction(IDB_STORE, 'readwrite');
-            tx.objectStore(IDB_STORE).delete(id);
-        } catch (e) {}
-    }
-
-    async function enqueueSyncAction(payload) {
-        try {
-            const db = await initIDB();
-            if (!db) return;
-            const tx = db.transaction(IDB_QUEUE, 'readwrite');
-            tx.objectStore(IDB_QUEUE).add({ payload, timestamp: Date.now() });
-        } catch (e) {}
-    }
-
-    async function processSyncQueue() {
-        if (isSyncingQueue || !navigator.onLine || !GOOGLE_APP_URL) return;
-        isSyncingQueue = true;
-        try {
-            const db = await initIDB();
-            if (!db) { isSyncingQueue = false; return; }
-
-            const getQueueItems = () => new Promise(res => {
-                const tx = db.transaction(IDB_QUEUE, 'readonly');
-                const req = tx.objectStore(IDB_QUEUE).getAll();
-                req.onsuccess = () => res(req.result || []);
-                req.onerror = () => res([]);
-            });
-
-            const queue = await getQueueItems();
-            for (const item of queue) {
-                try {
-                    await fetch(GOOGLE_APP_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'text/plain' },
-                        body: JSON.stringify(item.payload)
-                    });
-                    const delTx = db.transaction(IDB_QUEUE, 'readwrite');
-                    delTx.objectStore(IDB_QUEUE).delete(item.queueId);
-                } catch (netErr) {
-                    break;
-                }
-            }
-        } finally {
-            isSyncingQueue = false;
-        }
-    }
-
-    function saveToLocalStorage(data) {
-        try {
-            localStorage.setItem('myJournalDB', JSON.stringify(data));
-        } catch (e) {
-            // LocalStorage 5MB 초과 시 과거 Base64만 생략 (IndexedDB는 온전 보존)
-            try {
-                const lightCache = data.map((entry, idx) => {
-                    if (idx < 2) return entry;
-                    return {
-                        ...entry,
-                        media: (entry.media || []).map(m => ({
-                            type: m.type,
-                            viewUrl: m.viewUrl || "",
-                            thumbUrl: m.thumbUrl || "",
-                            thumb: m.thumb || "",
-                            base64: ""
-                        }))
-                    };
-                });
-                localStorage.setItem('myJournalDB', JSON.stringify(lightCache));
-            } catch (err2) {}
-        }
-    }
-
-    function generateMicroThumb(src) {
+    async function dbGetAll() {
+        const db = await openDB();
+        if (!db) return [];
         return new Promise(resolve => {
-            if (!src) { resolve(''); return; }
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.onload = () => {
-                try {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 44; canvas.height = 44;
-                    const ctx = canvas.getContext('2d');
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-                    const minSide = Math.min(img.width, img.height);
-                    ctx.drawImage(img, (img.width - minSide)/2, (img.height - minSide)/2, minSide, minSide, 0, 0, 44, 44);
-                    resolve(canvas.toDataURL('image/jpeg', 0.55));
-                } catch(e) {
-                    resolve(src);
-                }
-            };
-            img.onerror = () => resolve(src);
-            img.src = src;
+            const tx = db.transaction(DB_STORE, 'readonly');
+            const req = tx.objectStore(DB_STORE).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
         });
     }
 
-    // =========================================================================
-    // [핵심] 로컬 Base64를 절대 덮어쓰지 않는 데이터 복원 엔진
-    // =========================================================================
-    async function restoreAndHealAllData() {
-        const idbEntries = await loadFromIndexedDB();
-        const map = new Map();
-
-        journalDB.forEach(e => { if (e && e.id) map.set(e.id, e); });
-
-        if (idbEntries && idbEntries.length > 0) {
-            idbEntries.forEach(item => {
-                if (!map.has(item.id)) {
-                    map.set(item.id, item);
-                } else {
-                    const current = map.get(item.id);
-                    // item에 유효한 Base64가 있다면 절대 날아가지 않도록 보존
-                    if (item.media && current.media) {
-                        item.media.forEach((im, idx) => {
-                            const cm = current.media[idx];
-                            if (cm && (!cm.base64 || cm.base64.length < 500) && im.base64 && im.base64.length > 1000) {
-                                cm.base64 = im.base64;
-                            }
-                        });
-                    }
-                    if ((item.updatedAt || 0) > (current.updatedAt || 0)) {
-                        map.set(item.id, item);
-                    }
-                }
-            });
-        }
-
-        finalizeDB(map);
+    async function dbPut(item) {
+        const db = await openDB();
+        if (!db) return;
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).put(item);
     }
 
-    function finalizeDB(map) {
-        journalDB = Array.from(map.values());
-        journalDB.sort((a, b) => ((b.date || '') + ' ' + (b.time || '')).localeCompare((a.date || '') + ' ' + (a.time || '')));
-        saveToLocalStorage(journalDB);
-        saveToIndexedDB(journalDB);
-        renderCalendar();
-        renderTimeline();
+    async function dbDelete(id) {
+        const db = await openDB();
+        if (!db) return;
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).delete(id);
     }
 
+    // ==========================================
+    // 2. 초기화 및 렌더링
+    // ==========================================
     async function init() {
         setupChips();
+        diaryEntries = await dbGetAll();
         renderCalendar();
         renderTimeline();
-
-        await restoreAndHealAllData();
-        syncFromCloud();
-        processSyncQueue();
+        syncCloud();
         setupPullToRefresh();
-        setupIOSScrollReset();
-        setupLifeCycleListeners();
-    }
-
-    function setupLifeCycleListeners() {
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                refreshSystemDate();
-                restoreAndHealAllData();
-                syncFromCloud();
-                processSyncQueue();
-            }
-        });
-
-        window.addEventListener('pageshow', () => {
-            refreshSystemDate();
-            restoreAndHealAllData();
-            syncFromCloud();
-            processSyncQueue();
-        });
-
-        window.addEventListener('online', () => {
-            processSyncQueue();
-            syncFromCloud();
-        });
-    }
-
-    function setupIOSScrollReset() {
-        document.querySelectorAll('input, textarea').forEach(el => {
-            el.addEventListener('blur', () => {
-                setTimeout(() => {
-                    window.scrollTo(0, 0);
-                    document.body.scrollTop = 0;
-                }, 100);
-            });
-        });
-    }
-
-    function setupPullToRefresh() {
-        const ind = document.getElementById('pullIndicator');
-        const txt = document.getElementById('pullText');
-        const timeline = document.getElementById('timelineSection');
-        let startY = 0;
-        let isPulling = false;
-
-        document.addEventListener('touchstart', (e) => {
-            if (timeline.scrollTop <= 0) {
-                startY = e.touches[0].clientY;
-                isPulling = true;
-            }
-        }, { passive: true });
-
-        document.addEventListener('touchmove', (e) => {
-            if (!isPulling) return;
-            const currentY = e.touches[0].clientY;
-            const diff = currentY - startY;
-
-            if (diff > 10 && timeline.scrollTop <= 0) {
-                const pullDist = Math.min(diff * 0.45, 75);
-                ind.classList.add('pulling');
-                ind.style.transform = `translateY(${pullDist - 44}px)`;
-
-                if (pullDist > 45) {
-                    ind.classList.add('ready');
-                    txt.innerText = "손을 떼면 새로고침";
-                } else {
-                    ind.classList.remove('ready');
-                    txt.innerText = "당겨서 새로고침";
-                }
-            }
-        }, { passive: true });
-
-        document.addEventListener('touchend', () => {
-            if (!isPulling) return;
-            isPulling = false;
-
-            if (ind.classList.contains('ready')) {
-                ind.classList.remove('ready', 'pulling');
-                ind.classList.add('refreshing');
-                txt.innerText = "데이터 동기화 중...";
-
-                syncFromCloud(() => {
-                    processSyncQueue();
-                    restoreAndHealAllData();
-                    txt.innerText = "동기화 완료 ✔";
-                    setTimeout(() => {
-                        ind.classList.remove('refreshing');
-                        ind.style.transform = '';
-                    }, 600);
-                });
-            } else {
-                ind.classList.remove('pulling', 'ready');
-                ind.style.transform = '';
-            }
-        });
-    }
-
-    // [보장] 클라우드 동기화 시 로컬 Base64 무결성 100% 보존
-    function syncFromCloud(callback) {
-        if (!GOOGLE_APP_URL || !navigator.onLine) { if (callback) callback(); return; }
-        const cacheBusterUrl = GOOGLE_APP_URL + (GOOGLE_APP_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
-        
-        fetch(cacheBusterUrl, { cache: 'no-store' })
-            .then(res => res.json())
-            .then(res => {
-                if (res.status === "success" && Array.isArray(res.data)) {
-                    const cloudList = res.data;
-                    const mergedMap = new Map();
-
-                    journalDB.forEach(localItem => {
-                        if (localItem && localItem.id) mergedMap.set(localItem.id, localItem);
-                    });
-
-                    cloudList.forEach(cloudItem => {
-                        if (!cloudItem || !cloudItem.id) return;
-                        
-                        if (!mergedMap.has(cloudItem.id)) {
-                            mergedMap.set(cloudItem.id, cloudItem);
-                        } else {
-                            const localItem = mergedMap.get(cloudItem.id);
-                            
-                            // 로컬의 고화질 Base64는 클라우드 데이터에 그대로 합체 (절대 삭제 방지)
-                            if (localItem.media && cloudItem.media) {
-                                cloudItem.media.forEach((cm, idx) => {
-                                    const lm = localItem.media[idx];
-                                    if (lm && lm.base64 && lm.base64.length > 1000) {
-                                        cm.base64 = lm.base64;
-                                    }
-                                });
-                            }
-                            if (!cloudItem.microThumb && localItem.microThumb) {
-                                cloudItem.microThumb = localItem.microThumb;
-                            }
-                            
-                            if (cloudItem.updatedAt > (localItem.updatedAt || 0)) {
-                                mergedMap.set(cloudItem.id, cloudItem);
-                            } else {
-                                // 로컬이 최신인 경우 클라우드의 viewUrl만 보강
-                                if (cloudItem.media && cloudItem.media.length > 0) {
-                                    localItem.media = localItem.media || [];
-                                    cloudItem.media.forEach((cm, idx) => {
-                                        if (localItem.media[idx] && cm.viewUrl) {
-                                            localItem.media[idx].viewUrl = cm.viewUrl;
-                                        }
-                                    });
-                                }
-                            }
-                        }
-                    });
-
-                    finalizeDB(mergedMap);
-                }
-                if (callback) callback();
-            }).catch(() => {
-                if (callback) callback();
-            });
     }
 
     function renderCalendar() {
-        document.getElementById('calMonthTitle').innerText = `${currentYear}년 ${currentMonth + 1}월`;
-        const grid = document.getElementById('calendarGrid');
+        document.getElementById('calTitle').innerText = `${viewYear}년 ${viewMonth + 1}월`;
+        const grid = document.getElementById('calGrid');
         grid.innerHTML = '';
 
-        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-        const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
-        const todayStr = getLocalIsoDate(todayObj);
+        const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+        const lastDate = new Date(viewYear, viewMonth + 1, 0).getDate();
+        const todayStr = formatDate(new Date());
 
-        for (let i = 0; i < firstDay; i++) {
-            grid.innerHTML += `<div></div>`;
-        }
+        for (let i = 0; i < firstDay; i++) grid.innerHTML += '<div></div>';
 
-        for (let day = 1; day <= lastDate; day++) {
-            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const entries = journalDB.filter(e => e.date === dateStr);
-            const isToday = (dateStr === todayStr) ? 'today' : '';
-            const isSelected = (dateStr === activeDateStr) ? 'selected' : '';
+        for (let d = 1; d <= lastDate; d++) {
+            const dStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const entries = diaryEntries.filter(e => e.date === dStr);
+            const isToday = dStr === todayStr ? 'today' : '';
+            const isSel = dStr === activeDate ? 'selected' : '';
 
-            let thumbHtml = '';
-            let resolvedThumbUrl = '';
-
-            for (const ent of entries) {
-                const t = getCalendarThumbnail(ent);
-                if (t) {
-                    resolvedThumbUrl = t;
-                    break;
-                }
-            }
-
-            if (resolvedThumbUrl) {
-                thumbHtml = `<img src="${resolvedThumbUrl}" class="cal-thumb" alt="thumb" onerror="this.style.display='none'">`;
+            let badgeHtml = '';
+            // 해당 날짜에 사진이 있으면 고유 썸네일 표시
+            const hasThumb = entries.find(e => e.microThumb || (e.media && e.media[0]));
+            if (hasThumb) {
+                const src = hasThumb.microThumb || (hasThumb.media[0] && hasThumb.media[0].src);
+                badgeHtml = `<img src="${src}" class="cal-thumb" alt="thumb">`;
             } else if (entries.length > 0) {
-                thumbHtml = `<div class="cal-dot"></div>`;
+                badgeHtml = `<div class="cal-dot"></div>`;
             }
 
             grid.innerHTML += `
-                <div class="cal-cell ${isToday} ${isSelected}" data-date="${dateStr}" onclick="selectDate('${dateStr}')">
-                    <span class="cal-date-num">${day}</span>
-                    ${thumbHtml}
+                <div class="cal-cell ${isToday} ${isSel}" onclick="selectDate('${dStr}')">
+                    <span class="date-num">${d}</span>
+                    ${badgeHtml}
                 </div>
             `;
         }
     }
 
     function selectDate(dStr) {
-        activeDateStr = dStr;
+        activeDate = dStr;
         renderCalendar();
         renderTimeline();
     }
 
     function changeMonth(delta) {
-        currentMonth += delta;
-        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-        else if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        viewMonth += delta;
+        if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+        else if (viewMonth > 11) { viewMonth = 0; viewYear++; }
         renderCalendar();
     }
 
     function goToday() {
         const t = new Date();
-        currentYear = t.getFullYear();
-        currentMonth = t.getMonth();
-        activeDateStr = getLocalIsoDate(t);
+        viewYear = t.getFullYear();
+        viewMonth = t.getMonth();
+        activeDate = formatDate(t);
         renderCalendar();
         renderTimeline();
     }
 
-    // [보장] 타임라인 렌더링: 다른 사진의 썸네일 복제 코드 완전 삭제
     function renderTimeline() {
-        const parts = activeDateStr.split('-');
-        const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        const parts = activeDate.split('-');
+        const dObj = new Date(parts[0], parts[1] - 1, parts[2]);
         const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-        document.getElementById('timelineDateTitle').innerText = 
-            `${targetDate.getFullYear()}년 ${targetDate.getMonth() + 1}월 ${targetDate.getDate()}일 (${dayNames[targetDate.getDay()]})`;
+        document.getElementById('timelineTitle').innerText = 
+            `${dObj.getFullYear()}년 ${dObj.getMonth()+1}월 ${dObj.getDate()}일 (${dayNames[dObj.getDay()]})`;
 
-        const container = document.getElementById('timelineCards');
-        container.innerHTML = '';
+        const box = document.getElementById('cardContainer');
+        box.innerHTML = '';
 
-        const entries = journalDB.filter(e => e.date === activeDateStr);
+        const entries = diaryEntries.filter(e => e.date === activeDate);
         if (entries.length === 0) {
-            container.innerHTML = `
-                <div class="empty-timeline">
-                    이 날에 작성된 일기가 없습니다.<br>
-                    우측 상단 <strong>[➕ 기록 쓰기]</strong>를 눌러 추억을 남겨보세요.
-                </div>
-                <div class="timeline-footer">
-                    <button class="timeline-footer-link" onclick="openBackupSheet()">⚙️ 데이터 백업 및 설정 (v3.0)</button>
-                </div>
-            `;
+            box.innerHTML = `<div style="text-align:center; color:var(--text-sub); margin-top:40px; font-size:14px;">작성된 일기가 없습니다.</div>`;
             return;
         }
 
-        entries.forEach(entry => {
-            let mediaHtml = '';
-            if (entry.media && entry.media.length > 0) {
-                mediaHtml = `<div class="media-grid">`;
-                entry.media.forEach(m => {
-                    const isVideo = (m.type === 'video');
-                    
-                    if (isVideo) {
-                        const posterUrl = getVideoPoster(m);
-                        const playUrl = m.viewUrl || m.base64 || '';
-                        mediaHtml += `
-                            <div class="media-item" onclick="viewMedia('${playUrl}', 'video', '${posterUrl}')">
-                                <img src="${posterUrl}" loading="lazy" alt="동영상 썸네일">
-                                <div class="media-video-badge">▶</div>
-                            </div>
-                        `;
-                    } else {
-                        // 각 사진 고유의 URL 또는 Base64 호출
-                        const highResUrl = getCardImageSource(m);
-                        mediaHtml += `
-                            <div class="media-item" onclick="viewMedia('${highResUrl}', 'image')">
-                                <img src="${highResUrl}" loading="lazy" alt="일기 사진">
+        entries.forEach(item => {
+            let photosHtml = '';
+            if (item.media && item.media.length > 0) {
+                photosHtml = `<div class="photo-grid">`;
+                item.media.forEach(m => {
+                    // 각 사진 고유의 src를 렌더링 (타 사진 썸네일 복제 코드 원천 차단)
+                    const imgUrl = m.src || m.viewUrl || '';
+                    if (imgUrl) {
+                        photosHtml += `
+                            <div class="photo-box" onclick="viewPhoto('${imgUrl}')">
+                                <img src="${imgUrl}" loading="lazy" referrerpolicy="no-referrer" alt="사진">
                             </div>
                         `;
                     }
                 });
-                mediaHtml += `</div>`;
+                photosHtml += `</div>`;
             }
 
-            const locHtml = entry.location ? `<span class="entry-loc">📍 ${entry.location}</span>` : '';
-            const moodHtml = entry.mood ? `<span>${entry.mood}</span>` : '';
-            const weatherHtml = entry.weather ? `<span>${entry.weather}</span>` : '';
+            const moodHtml = item.mood ? `<span>${item.mood}</span>` : '';
+            const weatherHtml = item.weather ? `<span>${item.weather}</span>` : '';
+            const locHtml = item.location ? `<span style="background:var(--chip-bg); padding:2px 6px; border-radius:4px;">📍 ${item.location}</span>` : '';
 
-            container.innerHTML += `
-                <div class="entry-card">
-                    <div class="entry-top">
-                        <div class="entry-meta">
-                            <strong>${formatDisplayTime(entry.time)}</strong>
-                            ${moodHtml} ${weatherHtml} ${locHtml}
+            box.innerHTML += `
+                <div class="card">
+                    <div class="card-top">
+                        <div class="card-meta">
+                            <strong>${item.time || ''}</strong> ${moodHtml} ${weatherHtml} ${locHtml}
                         </div>
-                        <div class="entry-actions">
-                            <button class="entry-edit-btn" onclick="openEntryModal('${entry.id}')">수정</button>
-                            <button class="entry-del-btn" onclick="deleteEntry('${entry.id}')">삭제</button>
+                        <div class="card-actions">
+                            <button style="color:var(--primary); font-weight:600;" onclick="openModal('${item.id}')">수정</button>
+                            <button style="color:#FF3B30;" onclick="removeEntry('${item.id}')">삭제</button>
                         </div>
                     </div>
-                    <div class="entry-content">${entry.content}</div>
-                    ${mediaHtml}
+                    <div class="card-content">${item.content || ''}</div>
+                    ${photosHtml}
                 </div>
             `;
         });
-
-        container.innerHTML += `
-            <div class="timeline-footer">
-                <button class="timeline-footer-link" onclick="openBackupSheet()">⚙️ 데이터 백업 및 설정 (v3.0)</button>
-            </div>
-        `;
     }
 
-    function setupChips() {
-        document.querySelectorAll('#moodChips .chip-btn').forEach(btn => {
-            btn.onclick = () => {
-                if (selectedMood === btn.dataset.val) {
-                    selectedMood = "";
-                    btn.classList.remove('selected');
-                } else {
-                    document.querySelectorAll('#moodChips .chip-btn').forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    selectedMood = btn.dataset.val;
-                }
-            };
-        });
-        document.querySelectorAll('#weatherChips .chip-btn').forEach(btn => {
-            btn.onclick = () => {
-                if (selectedWeather === btn.dataset.val) {
-                    selectedWeather = "";
-                    btn.classList.remove('selected');
-                } else {
-                    document.querySelectorAll('#weatherChips .chip-btn').forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    selectedWeather = btn.dataset.val;
-                }
-            };
-        });
-    }
-
-    function openEntryModal(editId = null) {
-        currentEditingId = editId;
-        const saveBtn = document.getElementById('saveBtn');
-
-        if (editId) {
-            const entry = journalDB.find(e => e.id === editId);
-            if (!entry) return;
-
-            document.getElementById('modalDateLabel').innerText = `${entry.date} 기록 수정`;
-            document.getElementById('journalContent').value = entry.content || '';
-            document.getElementById('locInput').value = entry.location || '';
-            
-            selectedMood = entry.mood || "";
-            selectedWeather = entry.weather || "";
-            document.querySelectorAll('#moodChips .chip-btn').forEach(b => {
-                b.classList.toggle('selected', b.dataset.val === selectedMood);
-            });
-            document.querySelectorAll('#weatherChips .chip-btn').forEach(b => {
-                b.classList.toggle('selected', b.dataset.val === selectedWeather);
-            });
-
-            pendingMediaFiles = (entry.media || []).map(m => ({ ...m }));
-            renderPreviewThumbs();
-            saveBtn.innerText = "수정 완료";
-        } else {
-            document.getElementById('modalDateLabel').innerText = `${activeDateStr} 새 기록`;
-            document.getElementById('journalContent').value = '';
-            document.getElementById('locInput').value = '';
-            pendingMediaFiles = [];
-            renderPreviewThumbs();
-            selectedMood = ""; selectedWeather = "";
-            document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected'));
-            saveBtn.innerText = "저장하기";
-        }
-
-        document.getElementById('entryModal').classList.add('active');
-    }
-
-    function closeEntryModal() {
-        document.getElementById('entryModal').classList.remove('active');
-        currentEditingId = null;
-        if (isRecording) stopSpeech();
-        setTimeout(() => { window.scrollTo(0, 0); document.body.scrollTop = 0; }, 50);
-    }
-
-    function fetchCurrentLocation() {
-        if (!navigator.geolocation) { alert("위치 권한을 지원하지 않는 환경입니다."); return; }
-        const locInput = document.getElementById('locInput');
-        locInput.placeholder = "위치 확인 중...";
-
-        navigator.geolocation.getCurrentPosition(pos => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
-                .then(r => r.json())
-                .then(data => {
-                    const addr = data.address || {};
-                    const city = addr.city || addr.province || addr.county || "";
-                    const district = addr.borough || addr.suburb || addr.district || "";
-                    locInput.value = `${city} ${district}`.trim() || "현재 위치";
-                }).catch(() => {
-                    locInput.value = "대한민국 서울";
-                });
-        }, () => {
-            locInput.value = "위치 확인 불가";
-        }, { timeout: 7000 });
-    }
-
-    function toggleSpeech() {
-        if (isRecording) stopSpeech();
-        else startSpeech();
-    }
-
-    function startSpeech() {
-        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRec) {
-            alert("키보드 우측 하단 마이크(받아쓰기 🎙️)를 누르시면 가장 정확하게 입력됩니다!");
-            document.getElementById('journalContent').focus();
-            return;
-        }
-
-        try {
-            if (recognition) { recognition.abort(); }
-            recognition = new SpeechRec();
-            recognition.lang = 'ko-KR';
-            recognition.continuous = true;
-            recognition.interimResults = true;
-
-            const textarea = document.getElementById('journalContent');
-            const voiceBtn = document.getElementById('voiceBtn');
-            baseSpeechText = textarea.value;
-
-            recognition.onstart = () => {
-                isRecording = true;
-                voiceBtn.classList.add('recording');
-                speechTimer = setTimeout(() => { stopSpeech(); }, 15000);
-            };
-
-            recognition.onresult = (e) => {
-                let interim = '';
-                let finalStr = '';
-
-                for (let i = e.resultIndex; i < e.results.length; i++) {
-                    const transcript = e.results[i][0].transcript;
-                    if (e.results[i].isFinal) finalStr += transcript;
-                    else interim += transcript;
-                }
-
-                if (finalStr) {
-                    baseSpeechText = (baseSpeechText ? baseSpeechText + ' ' : '') + finalStr;
-                }
-                textarea.value = baseSpeechText + (interim ? (baseSpeechText ? ' ' : '') + interim : '');
-            };
-
-            recognition.onerror = () => { stopSpeech(); };
-            recognition.onend = () => { stopSpeech(); };
-
-            recognition.start();
-        } catch (err) {
-            stopSpeech();
-        }
-    }
-
-    function stopSpeech() {
-        if (speechTimer) { clearTimeout(speechTimer); speechTimer = null; }
-        if (recognition) {
-            try { recognition.stop(); } catch(e) {}
-            recognition = null;
-        }
-        isRecording = false;
-        const voiceBtn = document.getElementById('voiceBtn');
-        if (voiceBtn) voiceBtn.classList.remove('recording');
-    }
-
-    async function handleFileSelect(e) {
-        const files = Array.from(e.target.files);
-        if (!files.length) return;
-        if (pendingMediaFiles.length + files.length > 10) {
-            alert("미디어는 한 번에 최대 10개까지 첨부 가능합니다.");
-            return;
-        }
-
-        const saveBtn = document.getElementById('saveBtn');
-        saveBtn.disabled = true;
-        saveBtn.innerText = "미디어 최적화 중...";
-
-        try {
-            for (const file of files) {
-                if (file.type.startsWith('image/')) {
-                    const res = await processImage(file);
-                    // 개별 미디어에 자신의 900px Base64와 개별 썸네일 보관
-                    pendingMediaFiles.push({
-                        type: 'image',
-                        base64: res.compressedBase64,
-                        microThumb: res.microThumb
-                    });
-                } else if (file.type.startsWith('video/')) {
-                    if (file.size > 25 * 1024 * 1024) {
-                        alert(`영상 파일(${file.name})이 25MB를 초과하여 제외되었습니다.`);
-                        continue;
-                    }
-                    const thumb = await extractVideoThumbnail(file);
-                    const videoBase64 = await readFileAsBase64(file);
-                    pendingMediaFiles.push({
-                        type: 'video',
-                        base64: videoBase64,
-                        thumb: thumb,
-                        microThumb: thumb
-                    });
-                }
-            }
-        } finally {
-            saveBtn.disabled = false;
-            saveBtn.innerText = currentEditingId ? "수정 완료" : "저장하기";
-            e.target.value = '';
-        }
-        renderPreviewThumbs();
-    }
-
-    function readFileAsBase64(file) {
+    // ==========================================
+    // 3. 사진 압축 및 파일 처리
+    // ==========================================
+    function compressImage(file, maxDim, quality) {
         return new Promise(resolve => {
             const reader = new FileReader();
-            reader.onload = e => resolve(e.target.result);
-            reader.onerror = () => resolve('');
-            reader.readAsDataURL(file);
-        });
-    }
-
-    function processImage(file) {
-        return new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = e => {
                 const img = new Image();
                 img.onload = () => {
-                    const maxDim = 900;
                     let w = img.width, h = img.height;
-                    if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
-                    else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
-                    
+                    if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+                    else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
                     const canvas = document.createElement('canvas');
                     canvas.width = w; canvas.height = h;
-                    const ctx = canvas.getContext('2d');
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-                    ctx.drawImage(img, 0, 0, w, h);
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.76);
-
-                    // 개별 사진 전용 44px 썸네일
-                    const thumbCanvas = document.createElement('canvas');
-                    thumbCanvas.width = 44; thumbCanvas.height = 44;
-                    const minSide = Math.min(img.width, img.height);
-                    thumbCanvas.getContext('2d').drawImage(img, (img.width - minSide)/2, (img.height - minSide)/2, minSide, minSide, 0, 0, 44, 44);
-                    const microThumb = thumbCanvas.toDataURL('image/jpeg', 0.55);
-
-                    resolve({ compressedBase64, microThumb });
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
                 };
                 img.src = e.target.result;
             };
@@ -1392,279 +447,301 @@
         });
     }
 
-    function extractVideoThumbnail(file) {
+    function createThumb(file) {
         return new Promise(resolve => {
-            const video = document.createElement('video');
-            video.preload = 'metadata';
-            video.src = URL.createObjectURL(file);
-            video.muted = true;
-            video.playsInline = true;
-            video.onloadeddata = () => { video.currentTime = 1; };
-            video.onseeked = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = 160; canvas.height = 160;
-                const ctx = canvas.getContext('2d');
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                const minSide = Math.min(video.videoWidth, video.videoHeight);
-                ctx.drawImage(video, (video.videoWidth - minSide)/2, (video.videoHeight - minSide)/2, minSide, minSide, 0, 0, 160, 160);
-                resolve(canvas.toDataURL('image/jpeg', 0.65));
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 44; canvas.height = 44;
+                    const min = Math.min(img.width, img.height);
+                    canvas.getContext('2d').drawImage(img, (img.width-min)/2, (img.height-min)/2, min, min, 0, 0, 44, 44);
+                    resolve(canvas.toDataURL('image/jpeg', 0.6));
+                };
+                img.src = e.target.result;
             };
-            video.onerror = () => resolve('');
+            reader.readAsDataURL(file);
         });
     }
 
-    function renderPreviewThumbs() {
-        const container = document.getElementById('previewThumbs');
-        container.innerHTML = '';
-        pendingMediaFiles.forEach((m, idx) => {
-            const isVideo = (m.type === 'video');
-            const displayUrl = isVideo ? getVideoPoster(m) : getCardImageSource(m);
-            const tag = isVideo ? '<span class="preview-video-tag">영상</span>' : '';
-            container.innerHTML += `
-                <div class="preview-thumb-box">
-                    <img src="${displayUrl}">
-                    ${tag}
-                    <button class="preview-del" onclick="removePendingMedia(${idx})">✕</button>
+    async function handleFiles(e) {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        for (const f of files) {
+            const highRes = await compressImage(f, 900, 0.75);
+            tempPhotos.push({ type: 'image', src: highRes });
+        }
+        renderPreviews();
+        e.target.value = '';
+    }
+
+    function renderPreviews() {
+        const box = document.getElementById('previewContainer');
+        box.innerHTML = '';
+        tempPhotos.forEach((p, idx) => {
+            box.innerHTML += `
+                <div class="preview-box">
+                    <img src="${p.src}">
+                    <button class="preview-del" onclick="tempPhotos.splice(${idx},1); renderPreviews();">✕</button>
                 </div>
             `;
         });
-        document.getElementById('fileCountLabel').innerText = `${pendingMediaFiles.length}개 선택됨`;
     }
 
-    function removePendingMedia(idx) {
-        pendingMediaFiles.splice(idx, 1);
-        renderPreviewThumbs();
-    }
-
+    // ==========================================
+    // 4. 일기 저장 / 삭제
+    // ==========================================
     async function saveEntry() {
-        const content = document.getElementById('journalContent').value.trim();
-        const hasMedia = pendingMediaFiles.length > 0;
-        const hasMood = !!selectedMood;
-        const hasWeather = !!selectedWeather;
-
-        if (!content && !hasMedia && !hasMood && !hasWeather) {
-            alert("일기 내용(글, 사진, 기분/날씨 중 하나)을 입력해 주세요.");
+        const content = document.getElementById('contentText').value.trim();
+        if (!content && tempPhotos.length === 0 && !selMood && !selWeather) {
+            alert("일기 내용을 입력해 주세요.");
             return;
         }
 
-        const saveBtn = document.getElementById('saveBtn');
-        saveBtn.disabled = true;
-        saveBtn.innerText = "저장 중...";
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        
+        let microThumb = "";
+        if (tempPhotos.length > 0) {
+            // 첫 번째 사진을 캘린더용 44px로 생성
+            microThumb = tempPhotos[0].src;
+        }
 
-        try {
-            let microThumb = "";
-            if (pendingMediaFiles.length > 0) {
-                microThumb = pendingMediaFiles[0].microThumb || "";
-                if (!microThumb) {
-                    const firstSrc = pendingMediaFiles[0].base64 || pendingMediaFiles[0].thumb || "";
-                    microThumb = await generateMicroThumb(firstSrc);
-                }
+        let entryItem = null;
+        if (currentEditId) {
+            entryItem = diaryEntries.find(e => e.id === currentEditId);
+            if (entryItem) {
+                entryItem.content = content;
+                entryItem.mood = selMood;
+                entryItem.weather = selWeather;
+                entryItem.location = document.getElementById('locInput').value.trim();
+                entryItem.media = [...tempPhotos];
+                if (microThumb) entryItem.microThumb = microThumb;
+                entryItem.updatedAt = Date.now();
             }
+        } else {
+            entryItem = {
+                id: 'entry_' + Date.now(),
+                date: activeDate,
+                time: timeStr,
+                mood: selMood,
+                weather: selWeather,
+                location: document.getElementById('locInput').value.trim(),
+                content: content,
+                media: [...tempPhotos],
+                microThumb: microThumb,
+                updatedAt: Date.now()
+            };
+            diaryEntries.unshift(entryItem);
+        }
 
-            const nowTimestamp = Date.now();
-            let savedEntry = null;
+        // IndexedDB에 영구 보존
+        await dbPut(entryItem);
+        renderCalendar();
+        renderTimeline();
+        closeModal();
 
-            if (currentEditingId) {
-                const idx = journalDB.findIndex(e => e.id === currentEditingId);
-                if (idx !== -1) {
-                    journalDB[idx].mood = selectedMood || "";
-                    journalDB[idx].weather = selectedWeather || "";
-                    journalDB[idx].location = document.getElementById('locInput').value.trim();
-                    journalDB[idx].content = content;
-                    journalDB[idx].media = pendingMediaFiles.map(m => ({
-                        type: m.type || 'image',
-                        base64: m.base64 || "",
-                        viewUrl: m.viewUrl || "",
-                        thumbUrl: m.thumbUrl || "",
-                        thumb: m.thumb || "",
-                        microThumb: m.microThumb || ""
-                    }));
-                    journalDB[idx].microThumb = microThumb || journalDB[idx].microThumb || "";
-                    journalDB[idx].updatedAt = nowTimestamp;
-                    savedEntry = journalDB[idx];
-                }
-            } else {
-                const now = new Date();
-                const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                const newId = 'entry_' + nowTimestamp;
-
-                savedEntry = {
-                    id: newId,
-                    date: activeDateStr,
-                    time: timeStr,
-                    mood: selectedMood || "",
-                    weather: selectedWeather || "",
-                    location: document.getElementById('locInput').value.trim(),
-                    content: content,
-                    media: pendingMediaFiles.map(m => ({
-                        type: m.type || 'image',
-                        base64: m.base64 || "",
-                        viewUrl: m.viewUrl || "",
-                        thumbUrl: m.thumbUrl || "",
-                        thumb: m.thumb || "",
-                        microThumb: m.microThumb || ""
-                    })),
-                    microThumb: microThumb,
-                    updatedAt: nowTimestamp
-                };
-                journalDB.unshift(savedEntry);
-            }
-
-            // IndexedDB에 고화질 Base64 원본 영구 보존
-            await saveToIndexedDB(journalDB);
-            saveToLocalStorage(journalDB);
-            renderCalendar();
-            renderTimeline();
-            closeEntryModal();
-
-            if (savedEntry) {
-                const syncPayload = { action: 'SAVE_ENTRY', ...savedEntry };
-                await enqueueSyncAction(syncPayload);
-                processSyncQueue();
-            }
-        } catch (err) {
-            console.error("저장 오류:", err);
-            alert("저장 처리 중 오류가 발생했습니다.");
-            closeEntryModal();
-        } finally {
-            saveBtn.disabled = false;
-            saveBtn.innerText = "저장하기";
+        // 백엔드 전송
+        if (GAS_URL) {
+            fetch(GAS_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({
+                    action: 'SAVE_ENTRY',
+                    ...entryItem,
+                    media: entryItem.media.map(m => ({
+                        type: m.type,
+                        base64: m.src && m.src.startsWith('data:') ? m.src : '',
+                        viewUrl: m.viewUrl || ''
+                    }))
+                })
+            }).catch(() => {});
         }
     }
 
-    async function deleteEntry(id) {
-        if (!confirm("이 일기 기록을 삭제할까요?")) return;
-        journalDB = journalDB.filter(e => e.id !== id);
-        
-        await deleteFromIndexedDB(id);
-        saveToLocalStorage(journalDB);
+    async function removeEntry(id) {
+        if (!confirm("이 일기를 삭제할까요?")) return;
+        diaryEntries = diaryEntries.filter(e => e.id !== id);
+        await dbDelete(id);
         renderCalendar();
         renderTimeline();
 
-        const delPayload = { action: 'DELETE_ENTRY', id: id };
-        await enqueueSyncAction(delPayload);
-        processSyncQueue();
-    }
-
-    function toggleSearch(show) {
-        const modal = document.getElementById('searchModal');
-        if (show) {
-            modal.classList.add('active');
-            document.getElementById('searchInput').focus();
-        } else {
-            modal.classList.remove('active');
-            document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search'));
+        if (GAS_URL) {
+            fetch(GAS_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action: 'DELETE_ENTRY', id })
+            }).catch(() => {});
         }
     }
 
-    function onSearch() {
-        const q = document.getElementById('searchInput').value.trim().toLowerCase();
-        const resBox = document.getElementById('searchResults');
-        resBox.innerHTML = '';
-        document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search'));
+    // ==========================================
+    // 5. 클라우드 동기화 (로컬 Base64 불변 보존)
+    // ==========================================
+    async function syncCloud(callback) {
+        if (!GAS_URL || !navigator.onLine) { if (callback) callback(); return; }
+        
+        try {
+            const res = await fetch(GAS_URL + '?t=' + Date.now(), { cache: 'no-store' });
+            const json = await res.json();
+            if (json.status === 'success' && Array.isArray(json.data)) {
+                const cloudList = json.data;
+                const map = new Map(diaryEntries.map(e => [e.id, e]));
 
-        if (!q) return;
+                cloudList.forEach(cloud => {
+                    if (!cloud || !cloud.id) return;
+                    if (!map.has(cloud.id)) {
+                        // 로컬에 없는 일기면 클라우드 것 추가
+                        const newMedia = (cloud.media || []).map(m => ({
+                            type: m.type || 'image',
+                            src: m.viewUrl || '',
+                            viewUrl: m.viewUrl || ''
+                        }));
+                        map.set(cloud.id, { ...cloud, media: newMedia });
+                    } else {
+                        // 로컬에 이미 있는 일기면 고화질 src는 유지하고 viewUrl만 연결
+                        const local = map.get(cloud.id);
+                        if (cloud.media && local.media) {
+                            cloud.media.forEach((cm, i) => {
+                                if (local.media[i] && cm.viewUrl) {
+                                    local.media[i].viewUrl = cm.viewUrl;
+                                    // 로컬 src가 비어있던 경우에만 viewUrl로 보충
+                                    if (!local.media[i].src) local.media[i].src = cm.viewUrl;
+                                }
+                            });
+                        }
+                    }
+                });
 
-        const matched = journalDB.filter(e => 
-            (e.content && e.content.toLowerCase().includes(q)) || 
-            (e.location && e.location.toLowerCase().includes(q))
-        );
+                diaryEntries = Array.from(map.values());
+                diaryEntries.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
 
-        matched.forEach(e => {
-            const cell = document.querySelector(`.cal-cell[data-date="${e.date}"]`);
-            if (cell) cell.classList.add('has-search');
+                // IndexedDB 갱신
+                for (const item of diaryEntries) await dbPut(item);
 
-            resBox.innerHTML += `
-                <div class="search-item" onclick="selectDate('${e.date}'); toggleSearch(false);">
-                    <strong>${e.date} (${formatDisplayTime(e.time)})</strong>: ${e.content.substring(0, 30)}...
-                </div>
-            `;
+                renderCalendar();
+                renderTimeline();
+            }
+        } catch (e) {}
+        if (callback) callback();
+    }
+
+    // ==========================================
+    // 6. UI 이벤트 및 제스처
+    // ==========================================
+    function setupChips() {
+        document.querySelectorAll('#moodRow .chip').forEach(btn => {
+            btn.onclick = () => {
+                selMood = (selMood === btn.dataset.v) ? "" : btn.dataset.v;
+                document.querySelectorAll('#moodRow .chip').forEach(b => b.classList.toggle('active', b.dataset.v === selMood));
+            };
+        });
+        document.querySelectorAll('#weatherRow .chip').forEach(btn => {
+            btn.onclick = () => {
+                selWeather = (selWeather === btn.dataset.v) ? "" : btn.dataset.v;
+                document.querySelectorAll('#weatherRow .chip').forEach(b => b.classList.toggle('active', b.dataset.v === selWeather));
+            };
         });
     }
 
-    function viewMedia(url, type, posterUrl = '') {
-        const box = document.getElementById('lightboxContent');
-        if (type === 'video') {
-            box.innerHTML = `
-                <video src="${url}" poster="${posterUrl}" controls autoplay playsinline style="max-width:95%; max-height:85vh; border-radius:8px;"></video>
-            `;
+    function openModal(editId = null) {
+        currentEditId = editId;
+        tempPhotos = [];
+        if (editId) {
+            const item = diaryEntries.find(e => e.id === editId);
+            if (!item) return;
+            document.getElementById('modalTitle').innerText = `${item.date} 기록 수정`;
+            document.getElementById('contentText').value = item.content || '';
+            document.getElementById('locInput').value = item.location || '';
+            selMood = item.mood || '';
+            selWeather = item.weather || '';
+            tempPhotos = (item.media || []).map(m => ({ ...m }));
         } else {
-            box.innerHTML = `<img src="${url}" alt="확대 사진">`;
+            document.getElementById('modalTitle').innerText = `${activeDate} 새 기록`;
+            document.getElementById('contentText').value = '';
+            document.getElementById('locInput').value = '';
+            selMood = ''; selWeather = '';
         }
+        document.querySelectorAll('#moodRow .chip').forEach(b => b.classList.toggle('active', b.dataset.v === selMood));
+        document.querySelectorAll('#weatherRow .chip').forEach(b => b.classList.toggle('active', b.dataset.v === selWeather));
+        renderPreviews();
+        document.getElementById('entryModal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('entryModal').classList.remove('active');
+        currentEditId = null;
+    }
+
+    function fetchLocation() {
+        if (!navigator.geolocation) return;
+        const inp = document.getElementById('locInput');
+        inp.placeholder = "확인 중...";
+        navigator.geolocation.getCurrentPosition(pos => {
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
+                .then(r => r.json())
+                .then(d => {
+                    const a = d.address || {};
+                    inp.value = `${a.city || a.province || ''} ${a.borough || a.district || ''}`.trim() || '서울';
+                }).catch(() => inp.value = '대한민국');
+        }, () => inp.value = '위치 확인 불가', { timeout: 6000 });
+    }
+
+    function viewPhoto(url) {
+        document.getElementById('lightboxImg').src = url;
         document.getElementById('lightbox').classList.add('active');
     }
 
-    function closeLightbox(e) {
-        if (e.target.tagName === 'VIDEO' || e.target.tagName === 'IMG') return;
-        forceCloseLightbox();
+    function setupPullToRefresh() {
+        const bar = document.getElementById('pullBar');
+        const list = document.getElementById('timelineList');
+        let startY = 0;
+
+        document.addEventListener('touchstart', e => {
+            if (list.scrollTop <= 0) startY = e.touches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', e => {
+            if (list.scrollTop <= 0 && e.changedTouches[0].clientY - startY > 60) {
+                bar.classList.add('refreshing');
+                syncCloud(() => setTimeout(() => bar.classList.remove('refreshing'), 500));
+            }
+        });
     }
 
-    function forceCloseLightbox() {
-        const box = document.getElementById('lightboxContent');
-        const video = box.querySelector('video');
-        if (video) { video.pause(); video.src = ""; }
-        box.innerHTML = '';
-        document.getElementById('lightbox').classList.remove('active');
-    }
-
-    function openBackupSheet() {
+    function openBackup() {
         document.getElementById('backupModal').classList.add('active');
     }
 
-    function closeBackupSheet() {
-        document.getElementById('backupModal').classList.remove('active');
+    function exportData() {
+        const blob = new Blob([JSON.stringify(diaryEntries, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `diary_backup_${formatDate(new Date())}.json`;
+        a.click();
     }
 
-    function forceAppUpdate() {
-        if (confirm("최신 버전(v3.0)으로 강제 업데이트하고 화면을 새로고침할까요?")) {
-            localStorage.setItem('myDiaryBuildVer', APP_CURRENT_VERSION);
-            if ('caches' in window) {
-                caches.keys().then(names => {
-                    names.forEach(name => caches.delete(name));
-                });
-            }
-            window.location.href = window.location.pathname + '?v=' + Date.now();
-        }
-    }
-
-    function exportBackupData() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(journalDB, null, 2));
-        const dlAnchor = document.createElement('a');
-        dlAnchor.setAttribute("href", dataStr);
-        dlAnchor.setAttribute("download", `my_diary_backup_${getLocalIsoDate(new Date())}.json`);
-        document.body.appendChild(dlAnchor);
-        dlAnchor.click();
-        dlAnchor.remove();
-        closeBackupSheet();
-    }
-
-    function importBackupData(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
+    function importData(e) {
+        const f = e.target.files[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = async ev => {
             try {
-                const imported = JSON.parse(event.target.result);
-                if (!Array.isArray(imported)) throw new Error("형식 오류");
-
-                if (confirm(`가져온 파일에서 총 ${imported.length}개의 일기를 확인했습니다. 기존 일기와 병합하여 복원할까요?`)) {
-                    const map = new Map(journalDB.map(item => [item.id, item]));
-                    imported.forEach(item => {
-                        if (item && item.id) map.set(item.id, item);
-                    });
-
-                    finalizeDB(map);
-                    alert("데이터 복원이 완료되었습니다.");
-                    closeBackupSheet();
+                const data = JSON.parse(ev.target.result);
+                if (Array.isArray(data)) {
+                    for (const item of data) await dbPut(item);
+                    diaryEntries = await dbGetAll();
+                    renderCalendar();
+                    renderTimeline();
+                    alert("복원 완료되었습니다.");
+                    document.getElementById('backupModal').classList.remove('active');
                 }
-            } catch (err) {
-                alert("올바른 백업 JSON 파일이 아닙니다.");
-            }
+            } catch (err) { alert("올바른 백업 파일이 아닙니다."); }
         };
-        reader.readAsText(file);
-        e.target.value = '';
+        r.readAsText(f);
     }
 
     init();
