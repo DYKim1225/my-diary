@@ -352,10 +352,6 @@
             background: #E5E5EA;
         }
         .preview-thumb-box img { width: 100%; height: 100%; object-fit: cover; }
-        .preview-video-tag {
-            position: absolute; bottom: 2px; left: 2px; font-size: 9px; background: rgba(0,0,0,0.6);
-            color: white; border-radius: 3px; padding: 1px 3px;
-        }
         .preview-del {
             position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white;
             border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px;
@@ -434,14 +430,12 @@
         </div>
     </div>
 
-    <div id="syncStatus" style="display:none;"></div>
-
     <div class="timeline-section" id="timelineSection">
         <div class="timeline-header">
             <div class="timeline-date-title" id="timelineDateTitle">2026년 9월 21일 (월)</div>
             <div class="timeline-actions">
-                <button class="timeline-setting-btn" onclick="openBackupSheet()" title="설정 및 관리">⚙️</button>
-                <button class="add-entry-btn" onclick="openEntryModal()"><span>➕</span>기록 쓰기</button>
+                <button class="timeline-setting-btn" type="button" onclick="openBackupSheet()" title="설정 및 관리">⚙️</button>
+                <button class="add-entry-btn" type="button" onclick="openEntryModal()"><span>➕</span>기록 쓰기</button>
             </div>
         </div>
         <div id="timelineCards"></div>
@@ -499,13 +493,13 @@
             <div class="modal-header">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span>설정 및 데이터 관리</span>
-                    <span style="font-size:11px; color:var(--primary); background:rgba(0,122,255,0.1); padding:2px 6px; border-radius:6px; font-weight:700;">v5.0</span>
+                    <span style="font-size:11px; color:var(--primary); background:rgba(0,122,255,0.1); padding:2px 6px; border-radius:6px; font-weight:700;">v5.1</span>
                 </div>
                 <button class="modal-close" onclick="closeBackupSheet()">닫기</button>
             </div>
             
             <div id="storageStatusBox" style="font-size:11px; color:var(--text-sub); line-height:1.5; background:var(--chip-bg); padding:10px; border-radius:10px;">
-                용량 분석 중…
+                기기 저장 상태 확인 중…
             </div>
 
             <button class="cal-today-pill" style="width:100%; padding:13px; font-size:13px;" onclick="configureCloud()">
@@ -518,7 +512,7 @@
                 🧹 60일 이전 사진 캐시 비우기 (용량 절약)
             </button>
             <div style="font-size:11px; color:var(--text-sub); line-height:1.4;">
-                구글 드라이브에 안전하게 보관된 60일 전 사진의 기기 고화질 원본만 비워 폰 용량을 확보합니다. (썸네일과 일기는 그대로 유지되며 필요 시 즉시 불러옵니다)
+                구글 드라이브에 보관된 60일 전 사진의 기기 고화질 원본만 비워 용량을 확보합니다. (썸네일과 일기는 유지되며 필요 시 탭하여 불러옵니다)
             </div>
 
             <div style="border-top:1px solid var(--line); margin: 6px 0;"></div>
@@ -587,63 +581,101 @@
     // INDEXEDDB ENGINE
     // =========================================================================
     function openDB() {
-        return new Promise((resolve, reject) => {
-            const req = indexedDB.open(IDB_NAME, 5);
-            req.onupgradeneeded = e => {
-                const db = req.result;
-                if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE, { keyPath: 'id' });
-                if (!db.objectStoreNames.contains(IDB_QUEUE)) db.createObjectStore(IDB_QUEUE, { keyPath: 'queueId', autoIncrement: true });
-            };
-            req.onsuccess = () => { database = req.result; resolve(database); };
-            req.onerror = () => reject(req.error);
+        return new Promise((resolve) => {
+            const timer = setTimeout(() => {
+                resolve(null);
+            }, 2000);
+
+            try {
+                const req = indexedDB.open(IDB_NAME, 5);
+                req.onblocked = () => {
+                    console.warn("IndexedDB 버전 대기");
+                };
+                req.onupgradeneeded = e => {
+                    const db = req.result;
+                    if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(IDB_QUEUE)) db.createObjectStore(IDB_QUEUE, { keyPath: 'queueId', autoIncrement: true });
+                };
+                req.onsuccess = () => {
+                    clearTimeout(timer);
+                    database = req.result;
+                    database.onversionchange = () => {
+                        database.close();
+                    };
+                    resolve(database);
+                };
+                req.onerror = () => {
+                    clearTimeout(timer);
+                    resolve(null);
+                };
+            } catch (err) {
+                clearTimeout(timer);
+                resolve(null);
+            }
         });
     }
 
     function readAll(storeName) {
         return new Promise(resolve => {
             if (!database) { resolve([]); return; }
-            const tx = database.transaction(storeName, 'readonly');
-            const req = tx.objectStore(storeName).getAll();
-            req.onsuccess = () => resolve(req.result || []);
-            req.onerror = () => resolve([]);
+            try {
+                const tx = database.transaction(storeName, 'readonly');
+                const req = tx.objectStore(storeName).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => resolve([]);
+            } catch (e) { resolve([]); }
         });
     }
 
     function putItem(storeName, item) {
         return new Promise((resolve, reject) => {
-            const tx = database.transaction(storeName, 'readwrite');
-            tx.objectStore(storeName).put(item);
-            tx.oncomplete = resolve;
-            tx.onabort = reject;
+            if (!database) { resolve(); return; }
+            try {
+                const tx = database.transaction(storeName, 'readwrite');
+                tx.objectStore(storeName).put(item);
+                tx.oncomplete = resolve;
+                tx.onabort = reject;
+            } catch (e) { resolve(); }
         });
     }
 
     function deleteItem(storeName, key) {
         return new Promise((resolve, reject) => {
-            const tx = database.transaction(storeName, 'readwrite');
-            tx.objectStore(storeName).delete(key);
-            tx.oncomplete = resolve;
-            tx.onabort = reject;
+            if (!database) { resolve(); return; }
+            try {
+                const tx = database.transaction(storeName, 'readwrite');
+                tx.objectStore(storeName).delete(key);
+                tx.oncomplete = resolve;
+                tx.onabort = reject;
+            } catch (e) { resolve(); }
         });
     }
 
     // =========================================================================
-    // INITIALIZATION & SYNC
+    // INITIALIZATION (화면 0초 즉시 렌더링 후 백그라운드 DB 연결)
     // =========================================================================
-    async function init() {
+    function init() {
         setupChips();
-        try {
-            await openDB();
-            journalDB = (await readAll(IDB_STORE)).sort((a, b) => (b.date + ' ' + (b.time || '')).localeCompare(a.date + ' ' + (a.time || '')));
-            renderCalendar();
-            renderTimeline();
-            setupPullToRefresh();
-            setupLifeCycleListeners();
-            syncNow();
-            updateStorageUI();
-        } catch (e) {
-            alert('저장소 초기화 오류: ' + e.message);
-        }
+        // 1. DB 오픈을 기다리지 않고 달력 날짜 숫자(1~30)와 틀을 즉시 동기식 렌더링
+        renderCalendar();
+        renderTimeline();
+        setupPullToRefresh();
+        setupLifeCycleListeners();
+
+        // 2. 백그라운드에서 안전하게 DB 연결 및 기존 데이터 갱신
+        openDB().then(async (db) => {
+            database = db;
+            if (database) {
+                const stored = await readAll(IDB_STORE);
+                if (stored && stored.length > 0) {
+                    journalDB = stored.sort((a, b) => (b.date + ' ' + (b.time || '')).localeCompare(a.date + ' ' + (a.time || '')));
+                    renderCalendar();
+                    renderTimeline();
+                }
+                syncNow();
+                updateStorageUI();
+            }
+        }).catch(() => {});
     }
 
     function setupLifeCycleListeners() {
@@ -660,6 +692,7 @@
     function setupPullToRefresh() {
         const ind = $('pullIndicator');
         const timeline = $('timelineSection');
+        if (!ind || !timeline) return;
         let startY = 0, isPulling = false;
 
         document.addEventListener('touchstart', e => {
@@ -719,10 +752,10 @@
     }
 
     async function syncNow() {
-        if (isSyncing || !navigator.onLine || !token()) return;
+        if (isSyncing || !navigator.onLine || !token() || !database) return;
         isSyncing = true;
         try {
-            // 1. 대기열 큐 전송
+            // 1. 대기열 전송
             const queue = await readAll(IDB_QUEUE);
             for (const q of queue) {
                 try {
@@ -734,7 +767,6 @@
                     });
                     await deleteItem(IDB_QUEUE, q.queueId);
                     
-                    // 기기 엔티티에 fileId 정보 병합
                     const updated = journalDB.find(e => e.id === q.payload.id);
                     if (updated && r.entry?.media) {
                         r.entry.media.forEach((rm, i) => {
@@ -750,7 +782,7 @@
                 }
             }
 
-            // 2. 클라우드 목록 동기화 (기기 Base64 원본 절대 보존)
+            // 2. 클라우드 목록 동기화
             const r = await api({ action: 'LIST' });
             if (Array.isArray(r.data)) {
                 const map = new Map(journalDB.map(e => [e.id, e]));
@@ -763,8 +795,8 @@
                         if (cloud.media && local.media) {
                             cloud.media.forEach((cm, i) => {
                                 const lm = local.media[i];
-                                if (lm && lm.base64) cm.base64 = lm.base64; // 로컬 고화질 보존
-                                if (lm && lm.thumb) cm.thumb = lm.thumb;   // 로컬 썸네일 보존
+                                if (lm && lm.base64) cm.base64 = lm.base64;
+                                if (lm && lm.thumb) cm.thumb = lm.thumb;
                             });
                         }
                         if (cloud.updatedAt > (local.updatedAt || 0)) {
@@ -779,15 +811,12 @@
                 updateStorageUI();
             }
         } catch (e) {
-            console.log("동기화 보류: ", e.message);
+            console.log("동기화 대기: ", e.message);
         } finally {
             isSyncing = false;
         }
     }
 
-    // =========================================================================
-    // 캐시 다이어트 & 스마트 로딩
-    // =========================================================================
     async function cleanOldMediaCache(days = 60) {
         const threshold = Date.now() - (days * 24 * 60 * 60 * 1000);
         let cleanedPhotos = 0;
@@ -796,7 +825,6 @@
             const entryTime = new Date(entry.date).getTime() || 0;
             if (entryTime < threshold && Array.isArray(entry.media)) {
                 for (const m of entry.media) {
-                    // 구글 드라이브에 안전 업로드된 사진만 고화질 Base64 비움
                     if (m.fileId && m.base64) {
                         m.base64 = "";
                         cleanedPhotos++;
@@ -817,8 +845,10 @@
             return;
         }
         const label = tileElement.querySelector('.media-message');
-        if (label) label.style.display = 'flex';
-        if (label) label.textContent = '드라이브에서 불러오는 중…';
+        if (label) {
+            label.style.display = 'flex';
+            label.textContent = '드라이브에서 불러오는 중…';
+        }
 
         try {
             const r = await api({
@@ -842,6 +872,8 @@
     }
 
     function updateStorageUI() {
+        const box = $('storageStatusBox');
+        if (!box) return;
         const totalEntries = journalDB.filter(e => !e.deleted).length;
         let cachedPhotos = 0, driveOnlyPhotos = 0;
 
@@ -852,17 +884,14 @@
             });
         });
 
-        $('storageStatusBox').innerHTML = `
+        box.innerHTML = `
             <strong>기기 저장 상태 (하루 5장 제한)</strong><br>
             • 총 일기: <strong>${totalEntries}일</strong><br>
             • 기기 고화질 보관 사진: <strong>${cachedPhotos}장</strong> (0초 즉각 로딩)<br>
-            • 드라이브 스트리밍 사진: <strong>${driveOnlyPhotos}장</strong> (용량 다이어트 상태)
+            • 드라이브 스트리밍 사진: <strong>${driveOnlyPhotos}장</strong> (용량 절약 상태)
         `;
     }
 
-    // =========================================================================
-    // 캘린더 & 타임라인 렌더링
-    // =========================================================================
     function goToday() {
         const t = new Date();
         currentYear = t.getFullYear();
@@ -886,8 +915,10 @@
     }
 
     function renderCalendar() {
-        $('calMonthTitle').innerText = `${currentYear}년 ${currentMonth + 1}월`;
+        const titleEl = $('calMonthTitle');
+        if (titleEl) titleEl.innerText = `${currentYear}년 ${currentMonth + 1}월`;
         const grid = $('calendarGrid');
+        if (!grid) return;
         grid.innerHTML = '';
 
         const firstDay = new Date(currentYear, currentMonth, 1).getDay();
@@ -924,9 +955,13 @@
         const parts = activeDateStr.split('-');
         const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
         const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-        $('timelineDateTitle').innerText = `${targetDate.getFullYear()}년 ${targetDate.getMonth() + 1}월 ${targetDate.getDate()}일 (${dayNames[targetDate.getDay()]})`;
+        const titleEl = $('timelineDateTitle');
+        if (titleEl) {
+            titleEl.innerText = `${targetDate.getFullYear()}년 ${targetDate.getMonth() + 1}월 ${targetDate.getDate()}일 (${dayNames[targetDate.getDay()]})`;
+        }
 
         const container = $('timelineCards');
+        if (!container) return;
         container.innerHTML = '';
 
         const entries = journalDB.filter(e => !e.deleted && e.date === activeDateStr);
@@ -991,9 +1026,6 @@
         }
     }
 
-    // =========================================================================
-    // 파일 압축 및 업로드 (하루 5장 제한 + 750px 최적화)
-    // =========================================================================
     function compressImage(file, maxDim = 750, quality = 0.74) {
         return new Promise(resolve => {
             const reader = new FileReader();
@@ -1010,7 +1042,6 @@
                     ctx.drawImage(img, 0, 0, w, h);
                     const compressed = canvas.toDataURL('image/jpeg', quality);
 
-                    // 개별 썸네일 (80px 정방형)
                     const thumbCanvas = document.createElement('canvas');
                     thumbCanvas.width = 80; thumbCanvas.height = 80;
                     const min = Math.min(img.width, img.height);
@@ -1029,7 +1060,6 @@
         const files = Array.from(e.target.files || []);
         if (!files.length) return;
 
-        // 하루 5장 제한 검증
         if (pendingMediaFiles.length + files.length > 5) {
             alert("사진/영상은 하루 최대 5장까지만 등록할 수 있습니다.");
             e.target.value = '';
@@ -1037,8 +1067,10 @@
         }
 
         const saveBtn = $('saveBtn');
-        saveBtn.disabled = true;
-        saveBtn.innerText = "사진 최적화 중…";
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerText = "사진 최적화 중…";
+        }
 
         try {
             for (const file of files) {
@@ -1069,8 +1101,10 @@
                 }
             }
         } finally {
-            saveBtn.disabled = false;
-            saveBtn.innerText = currentEditingId ? "수정 완료" : "저장하기";
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerText = currentEditingId ? "수정 완료" : "저장하기";
+            }
             e.target.value = '';
             renderPreviewThumbs();
         }
@@ -1078,6 +1112,7 @@
 
     function renderPreviewThumbs() {
         const box = $('previewThumbs');
+        if (!box) return;
         box.innerHTML = '';
         pendingMediaFiles.forEach((m, idx) => {
             box.innerHTML += `
@@ -1087,22 +1122,23 @@
                 </div>
             `;
         });
-        $('fileCountLabel').innerText = `${pendingMediaFiles.length}개 선택됨 (최대 5개)`;
+        const countLabel = $('fileCountLabel');
+        if (countLabel) countLabel.innerText = `${pendingMediaFiles.length}개 선택됨 (최대 5개)`;
     }
 
-    // =========================================================================
-    // 일기 저장 및 삭제
-    // =========================================================================
     async function saveEntry() {
-        const content = $('journalContent').value.trim();
+        const contentInput = $('journalContent');
+        const content = contentInput ? contentInput.value.trim() : '';
         if (!content && pendingMediaFiles.length === 0 && !selectedMood && !selectedWeather) {
             alert("일기 내용을 입력해 주세요.");
             return;
         }
 
         const saveBtn = $('saveBtn');
-        saveBtn.disabled = true;
-        saveBtn.innerText = "저장 중…";
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerText = "저장 중…";
+        }
 
         try {
             const now = new Date();
@@ -1115,7 +1151,7 @@
                 if (entry) {
                     entry.mood = selectedMood;
                     entry.weather = selectedWeather;
-                    entry.location = $('locInput').value.trim();
+                    entry.location = $('locInput')?.value.trim() || '';
                     entry.content = content;
                     entry.media = clone(pendingMediaFiles);
                     if (microThumb) entry.microThumb = microThumb;
@@ -1128,7 +1164,7 @@
                     time: timeStr,
                     mood: selectedMood,
                     weather: selectedWeather,
-                    location: $('locInput').value.trim(),
+                    location: $('locInput')?.value.trim() || '',
                     content: content,
                     media: clone(pendingMediaFiles),
                     microThumb: microThumb,
@@ -1139,10 +1175,8 @@
                 journalDB.unshift(entry);
             }
 
-            // 기기 IndexedDB 영구 저장
             await putItem(IDB_STORE, entry);
 
-            // 전송 대기열 추가
             const opId = uid();
             await putItem(IDB_QUEUE, {
                 opId,
@@ -1159,8 +1193,10 @@
         } catch (err) {
             alert("저장 오류: " + err.message);
         } finally {
-            saveBtn.disabled = false;
-            saveBtn.innerText = "저장하기";
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerText = "저장하기";
+            }
         }
     }
 
@@ -1186,9 +1222,6 @@
         syncNow();
     }
 
-    // =========================================================================
-    // 모달 및 UI 헬퍼
-    // =========================================================================
     function setupChips() {
         document.querySelectorAll('#moodChips .chip-btn').forEach(btn => {
             btn.onclick = () => {
@@ -1211,38 +1244,41 @@
             const entry = journalDB.find(e => e.id === editId);
             if (!entry) return;
             $('modalDateLabel').innerText = `${entry.date} 기록 수정`;
-            $('journalContent').value = entry.content \vert{}\vert{} '';$('locInput').value = entry.location || '';
+            $('journalContent').value = entry.content || '';
+            $('locInput').value = entry.location || '';
             selectedMood = entry.mood || '';
             selectedWeather = entry.weather || '';
             pendingMediaFiles = (entry.media || []).map(m => ({ ...m }));
         } else {
             $('modalDateLabel').innerText = `${activeDateStr} 새 기록`;
-            $('journalContent').value = '';$('locInput').value = '';
+            $('journalContent').value = '';
+            $('locInput').value = '';
             selectedMood = ''; selectedWeather = '';
         }
         document.querySelectorAll('#moodChips .chip-btn').forEach(b => b.classList.toggle('selected', b.dataset.val === selectedMood));
         document.querySelectorAll('#weatherChips .chip-btn').forEach(b => b.classList.toggle('selected', b.dataset.val === selectedWeather));
         renderPreviewThumbs();
-        $('entryModal').classList.add('active');
+        $('entryModal')?.classList.add('active');
     }
 
     function closeEntryModal() {
-        $('entryModal').classList.remove('active');
+        $('entryModal')?.classList.remove('active');
         currentEditingId = null;
         if (isRecording) stopSpeech();
     }
 
     function fetchCurrentLocation() {
         if (!navigator.geolocation) return;
-        $('locInput').placeholder = "위치 확인 중…";
+        const locInput = $('locInput');
+        if (locInput) locInput.placeholder = "위치 확인 중…";
         navigator.geolocation.getCurrentPosition(pos => {
             fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
                 .then(r => r.json())
                 .then(data => {
                     const a = data.address || {};
-                    $('locInput').value = `${a.city || a.province || ''} ${a.borough || a.district || ''}`.trim() || '서울';
-                }).catch(() => $('locInput').value = '대한민국');
-        }, () => $('locInput').value = '위치 확인 불가', { timeout: 6000 });
+                    if (locInput) locInput.value = `${a.city || a.province || ''} ${a.borough || a.district || ''}`.trim() || '서울';
+                }).catch(() => { if (locInput) locInput.value = '대한민국'; });
+        }, () => { if (locInput) locInput.value = '위치 확인 불가'; }, { timeout: 6000 });
     }
 
     function toggleSpeech() { if (isRecording) stopSpeech(); else startSpeech(); }
@@ -1253,15 +1289,16 @@
             if (recognition) recognition.abort();
             recognition = new SpeechRec();
             recognition.lang = 'ko-KR'; recognition.continuous = true; recognition.interimResults = true;
-            baseSpeechText = $('journalContent').value;
-            recognition.onstart = () => { isRecording = true; $('voiceBtn').classList.add('recording'); };
+            baseSpeechText = $('journalContent')?.value || '';
+            recognition.onstart = () => { isRecording = true; $('voiceBtn')?.classList.add('recording'); };
             recognition.onresult = e => {
                 let interim = '', finalStr = '';
                 for (let i = e.resultIndex; i < e.results.length; i++) {
                     if (e.results[i].isFinal) finalStr += e.results[i][0].transcript;
                     else interim += e.results[i][0].transcript;
                 }
-                $('journalContent').value = baseSpeechText + (finalStr ? ' ' + finalStr : '') + interim;
+                const contentEl = $('journalContent');
+                if (contentEl) contentEl.value = baseSpeechText + (finalStr ? ' ' + finalStr : '') + interim;
             };
             recognition.onerror = stopSpeech; recognition.onend = stopSpeech;
             recognition.start();
@@ -1274,12 +1311,14 @@
     }
 
     function toggleSearch(show) {
-        if (show) { $('searchModal').classList.add('active');$('searchInput').focus(); }
-        else { $('searchModal').classList.remove('active'); document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search')); }
+        if (show) { $('searchModal')?.classList.add('active');$('searchInput')?.focus(); }
+        else { $('searchModal')?.classList.remove('active'); document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search')); }
     }
     function onSearch() {
-        const q = $('searchInput').value.trim().toLowerCase();
-        const box = $('searchResults'); box.innerHTML = '';
+        const q = $('searchInput')?.value.trim().toLowerCase() || '';
+        const box = $('searchResults');
+        if (!box) return;
+        box.innerHTML = '';
         document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search'));
         if (!q) return;
 
@@ -1297,13 +1336,14 @@
 
     function viewMedia(url, type, poster = '') {
         const box = $('lightboxContent');
+        if (!box) return;
         box.innerHTML = '';
         if (type === 'video') {
             box.innerHTML = `<video src="${url}" controls autoplay playsinline style="max-width:95%; max-height:85vh; border-radius:8px;"></video>`;
         } else {
             box.innerHTML = `<img src="${url}" alt="확대">`;
         }
-        $('lightbox').classList.add('active');
+        $('lightbox')?.classList.add('active');
     }
 
     function closeLightbox(e) {
@@ -1311,13 +1351,18 @@
         forceCloseLightbox();
     }
     function forceCloseLightbox() {
-        const v = $('lightboxContent').querySelector('video');
+        const v = $('lightboxContent')?.querySelector('video');
         if (v) { v.pause(); v.src = ''; }
-        $('lightboxContent').innerHTML = '';$('lightbox').classList.remove('active');
+        const box = $('lightboxContent');
+        if (box) box.innerHTML = '';
+        $('lightbox')?.classList.remove('active');
     }
 
-    function openBackupSheet() { updateStorageUI(); $('backupModal').classList.add('active'); }
-    function closeBackupSheet() { $('backupModal').classList.remove('active'); }
+    function openBackupSheet() {
+        try { updateStorageUI(); } catch (e) {}
+        $('backupModal')?.classList.add('active');
+    }
+    function closeBackupSheet() { $('backupModal')?.classList.remove('active'); }
 
     function configureCloud() {
         const val = prompt('Code.gs의 setupDiary 실행 로그에 표시된 연결 암호를 입력하세요:', token());
