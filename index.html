@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>나의 일기</title>
@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=512&h=512&q=80">
     <link rel="icon" type="image/png" href="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=512&h=512&q=80">
     <style>
-        * { box-sizing: border-box; touch-action: manipulation; }
+        * { box-sizing: border-box; touch-action: manipulation; margin: 0; padding: 0; }
         :root {
             --bg: #F2F2F7;
             --card: #FFFFFF;
@@ -28,7 +28,6 @@
             top: 0; left: 0; right: 0; bottom: 0;
             width: 100%; height: 100%;
             height: 100dvh;
-            margin: 0; padding: 0;
             overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg);
@@ -40,18 +39,20 @@
 
         .pull-refresh-indicator {
             position: absolute;
-            top: env(safe-area-inset-top, 0px);
-            left: 0; right: 0;
-            height: 40px;
+            top: 0; left: 0; right: 0;
+            height: calc(44px + env(safe-area-inset-top));
+            padding-top: env(safe-area-inset-top);
+            background: var(--card);
+            border-bottom: 1px solid var(--line);
             display: flex; align-items: center; justify-content: center; gap: 6px;
             font-size: 12px; font-weight: 600; color: var(--text-sub);
             transform: translateY(-100%);
             transition: transform 0.2s ease, opacity 0.2s ease;
-            z-index: 50; pointer-events: none; opacity: 0;
+            z-index: 100; pointer-events: none; opacity: 0;
         }
         .pull-refresh-indicator.pulling { opacity: 1; transition: none; }
         .pull-refresh-indicator.refreshing {
-            opacity: 1; transform: translateY(14px); transition: transform 0.25s ease;
+            opacity: 1; transform: translateY(0); transition: transform 0.25s ease;
         }
         .pull-icon { display: inline-block; transition: transform 0.2s ease; font-size: 14px; }
         .pull-refresh-indicator.ready .pull-icon { transform: rotate(180deg); }
@@ -59,7 +60,7 @@
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         .calendar-section {
-            padding-top: calc(24px + env(safe-area-inset-top));
+            padding-top: calc(20px + env(safe-area-inset-top));
             padding-left: 16px;
             padding-right: 16px;
             padding-bottom: 12px;
@@ -71,7 +72,6 @@
             flex-shrink: 0;
         }
 
-        /* [개선] 절대 밀리지 않는 가로 1열 헤더 레이아웃 */
         .cal-header {
             display: flex;
             justify-content: space-between;
@@ -110,7 +110,7 @@
         .cal-actions-group {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             flex-shrink: 0;
         }
         .cal-arrow-btn {
@@ -205,6 +205,26 @@
             display: flex; justify-content: space-between; align-items: center;
         }
         .timeline-date-title { font-size: 17px; font-weight: 700; white-space: nowrap; }
+        
+        .timeline-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .timeline-setting-btn {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
         .add-entry-btn {
             background: var(--primary); color: white; border: none; border-radius: 18px;
             padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -256,6 +276,11 @@
         .media-item img {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
             transform: translateZ(0);
+        }
+        .media-message {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            text-align: center; font-size: 11px; padding: 8px; z-index: 2; pointer-events: none;
+            color: #42424a; background: rgba(242,242,247,.82);
         }
         .media-video-badge {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -389,7 +414,6 @@
     </div>
 
     <div class="calendar-section" id="calSection">
-        <!-- [개선] 1년 12개월 어떤 날짜에서도 절대 밀리지 않는 가로 1열 헤더 -->
         <div class="cal-header">
             <div class="cal-title-group">
                 <div class="cal-title" id="calMonthTitle">2026년 9월</div>
@@ -399,7 +423,6 @@
                 <button class="cal-arrow-btn" onclick="changeMonth(-1)" title="이전 달">‹</button>
                 <button class="cal-arrow-btn" onclick="changeMonth(1)" title="다음 달">›</button>
                 <button class="icon-btn" onclick="toggleSearch(true)" title="검색">🔍</button>
-                <button class="icon-btn" onclick="openBackupSheet()" title="설정 및 관리">⚙️</button>
             </div>
         </div>
 
@@ -411,10 +434,15 @@
         </div>
     </div>
 
+    <div id="syncStatus" style="display:none;"></div>
+
     <div class="timeline-section" id="timelineSection">
         <div class="timeline-header">
-            <div class="timeline-date-title" id="timelineDateTitle">2026년 9월 20일 (일)</div>
-            <button class="add-entry-btn" onclick="openEntryModal()"><span>➕</span>기록 쓰기</button>
+            <div class="timeline-date-title" id="timelineDateTitle">2026년 9월 21일 (월)</div>
+            <div class="timeline-actions">
+                <button class="timeline-setting-btn" onclick="openBackupSheet()" title="설정 및 관리">⚙️</button>
+                <button class="add-entry-btn" onclick="openEntryModal()"><span>➕</span>기록 쓰기</button>
+            </div>
         </div>
         <div id="timelineCards"></div>
     </div>
@@ -455,7 +483,7 @@
             </div>
 
             <div class="media-picker-bar">
-                <button class="pick-btn" onclick="document.getElementById('filePicker').click()">📷 사진/영상 추가 (최대 10개)</button>
+                <button class="pick-btn" onclick="document.getElementById('filePicker').click()">📷 사진/영상 추가 (최대 5장)</button>
                 <input type="file" id="filePicker" accept="image/*,video/*" multiple style="display:none;" onchange="handleFileSelect(event)">
                 <span id="fileCountLabel">0개 선택됨</span>
             </div>
@@ -470,17 +498,27 @@
         <div class="modal-sheet">
             <div class="modal-header">
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <span>설정 및 데이터 보관</span>
-                    <span style="font-size:11px; color:var(--primary); background:rgba(0,122,255,0.1); padding:2px 6px; border-radius:6px; font-weight:700;">v2.4 최신</span>
+                    <span>설정 및 데이터 관리</span>
+                    <span style="font-size:11px; color:var(--primary); background:rgba(0,122,255,0.1); padding:2px 6px; border-radius:6px; font-weight:700;">v5.0</span>
                 </div>
                 <button class="modal-close" onclick="closeBackupSheet()">닫기</button>
             </div>
             
-            <button class="cal-today-pill" style="width:100%; padding:13px; font-size:13px; background:#FF9500; color:white;" onclick="forceAppUpdate()">
-                ⚡ 최신 버전 강제 업데이트 (캐시 초기화)
+            <div id="storageStatusBox" style="font-size:11px; color:var(--text-sub); line-height:1.5; background:var(--chip-bg); padding:10px; border-radius:10px;">
+                용량 분석 중…
+            </div>
+
+            <button class="cal-today-pill" style="width:100%; padding:13px; font-size:13px;" onclick="configureCloud()">
+                클라우드 연결 암호 설정
+            </button>
+            <button class="cal-today-pill" style="width:100%; padding:13px; font-size:13px;" onclick="syncNow()">
+                지금 동기화 / 재시도
+            </button>
+            <button class="cal-today-pill" style="width:100%; padding:13px; font-size:13px; background:#FF9500; color:white;" onclick="cleanOldMediaCache(60)">
+                🧹 60일 이전 사진 캐시 비우기 (용량 절약)
             </button>
             <div style="font-size:11px; color:var(--text-sub); line-height:1.4;">
-                화면 갱신이 필요하거나 이전 캐시가 남아있을 때 눌러주시면 즉시 최신 엔진으로 갱신됩니다.
+                구글 드라이브에 안전하게 보관된 60일 전 사진의 기기 고화질 원본만 비워 폰 용량을 확보합니다. (썸네일과 일기는 그대로 유지되며 필요 시 즉시 불러옵니다)
             </div>
 
             <div style="border-top:1px solid var(--line); margin: 6px 0;"></div>
@@ -501,391 +539,159 @@
     </div>
 
 <script>
-    const APP_CURRENT_VERSION = "2.4";
-    const GOOGLE_APP_URL = "https://script.google.com/macros/s/AKfycbwqB0jX942QF3Epg5-r-s33DYpoGIvDJ27r2aJWILew1mYq1m0NcZ_n2EA-Ng2nnlc/exec";
-
-    const storedVer = localStorage.getItem('myDiaryBuildVer');
-    if (storedVer !== APP_CURRENT_VERSION) {
-        localStorage.setItem('myDiaryBuildVer', APP_CURRENT_VERSION);
-    }
+    const GOOGLE_APP_URL = 'https://script.google.com/macros/s/AKfycbwqB0jX942QF3Epg5-r-s33DYpoGIvDJ27r2aJWILew1mYq1m0NcZ_n2EA-Ng2nnlc/exec';
 
     let todayObj = new Date();
     let currentYear = todayObj.getFullYear();
     let currentMonth = todayObj.getMonth();
     let activeDateStr = getLocalIsoDate(todayObj);
 
-    let journalDB = JSON.parse(localStorage.getItem('myJournalDB') || "[]");
+    let journalDB = [];
     let pendingMediaFiles = [];
-    let isRecording = false;
-    let recognition = null;
-    let baseSpeechText = "";
-    let speechTimer = null;
-    let selectedMood = "";
-    let selectedWeather = "";
-    let currentEditingId = null;
-    let isSyncingQueue = false;
+    let isRecording = false, recognition = null, baseSpeechText = '', speechTimer = null;
+    let selectedMood = '', selectedWeather = '', currentEditingId = null;
+    let database = null, isSyncing = false;
+
+    const IDB_NAME = 'MyDiaryIDB';
+    const IDB_STORE = 'diary_entries';
+    const IDB_QUEUE = 'sync_queue';
+
+    const $ = id => document.getElementById(id);
+    const clone = x => JSON.parse(JSON.stringify(x));
+    const uid = () => 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 
     function getLocalIsoDate(d) {
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
-    function formatDisplayTime(timeStr) {
-        if (!timeStr) return '';
-        const match = String(timeStr).match(/(\d{1,2}:\d{2})/);
-        return match ? match[1] : timeStr;
+    function formatDisplayTime(t) {
+        return String(t || '').match(/\d{1,2}:\d{2}/)?.[0] || '';
     }
 
     function refreshSystemDate() {
-        const freshNow = new Date();
-        const freshDateStr = getLocalIsoDate(freshNow);
-        const oldTodayStr = getLocalIsoDate(todayObj);
-        todayObj = freshNow;
-        if (freshDateStr !== oldTodayStr && activeDateStr === oldTodayStr) {
-            activeDateStr = freshDateStr;
-            currentYear = freshNow.getFullYear();
-            currentMonth = freshNow.getMonth();
+        const fresh = new Date();
+        const oldStr = getLocalIsoDate(todayObj);
+        todayObj = fresh;
+        if (oldStr !== getLocalIsoDate(fresh) && activeDateStr === oldStr) {
+            activeDateStr = getLocalIsoDate(fresh);
+            currentYear = fresh.getFullYear();
+            currentMonth = fresh.getMonth();
         }
     }
 
-    function getCardHighResSource(m) {
-        if (!m) return '';
-        const b64 = m.base64 || '';
-        if (b64.startsWith('data:image') && b64.length > 6000) {
-            return b64;
-        }
-        if (m.viewUrl && m.viewUrl.startsWith('http')) {
-            return m.viewUrl;
-        }
-        if (m.thumbUrl && m.thumbUrl.startsWith('http')) {
-            return m.thumbUrl;
-        }
-        return b64 || m.viewUrl || '';
+    function token() {
+        try { return localStorage.getItem('myDiaryToken') || ''; } catch { return ''; }
     }
 
-    function getVideoPoster(m) {
-        if (!m) return '';
-        if (m.thumb && m.thumb.length > 3000) return m.thumb;
-        if (m.thumbUrl && m.thumbUrl.startsWith('http')) return m.thumbUrl;
-        if (m.base64 && m.base64.startsWith('data:image')) return m.base64;
-        return '';
-    }
-
-    function getCalendarThumbnail(entry) {
-        if (!entry) return '';
-        if (entry.microThumb && entry.microThumb.length > 50) return entry.microThumb;
-        if (entry.media && entry.media.length > 0) {
-            const first = entry.media[0];
-            if (first.viewUrl && first.viewUrl.startsWith('http')) return first.viewUrl;
-            if (first.thumbUrl && first.thumbUrl.startsWith('http')) return first.thumbUrl;
-            if (first.base64 && first.base64.length > 1000) return first.base64;
-        }
-        return '';
-    }
-
-    const IDB_NAME = 'MyDiaryIDB';
-    const IDB_STORE = 'diary_entries';
-    const IDB_QUEUE = 'sync_queue';
-    const IDB_VERSION = 2;
-
-    function initIDB() {
-        return new Promise((resolve) => {
-            if (!window.indexedDB) { resolve(null); return; }
-            const req = indexedDB.open(IDB_NAME, IDB_VERSION);
-            req.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(IDB_STORE)) {
-                    db.createObjectStore(IDB_STORE, { keyPath: 'id' });
-                }
-                if (!db.objectStoreNames.contains(IDB_QUEUE)) {
-                    db.createObjectStore(IDB_QUEUE, { autoIncrement: true, keyPath: 'queueId' });
-                }
+    // =========================================================================
+    // INDEXEDDB ENGINE
+    // =========================================================================
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(IDB_NAME, 5);
+            req.onupgradeneeded = e => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+                if (!db.objectStoreNames.contains(IDB_QUEUE)) db.createObjectStore(IDB_QUEUE, { keyPath: 'queueId', autoIncrement: true });
             };
-            req.onsuccess = () => resolve(req.result);
-            req.onerror = () => resolve(null);
+            req.onsuccess = () => { database = req.result; resolve(database); };
+            req.onerror = () => reject(req.error);
         });
     }
 
-    async function loadFromIndexedDB() {
-        try {
-            const db = await initIDB();
-            if (!db) return null;
-            return new Promise((resolve) => {
-                const tx = db.transaction(IDB_STORE, 'readonly');
-                const store = tx.objectStore(IDB_STORE);
-                const req = store.getAll();
-                req.onsuccess = () => resolve(req.result || []);
-                req.onerror = () => resolve(null);
-            });
-        } catch (e) { return null; }
-    }
-
-    async function saveToIndexedDB(entries) {
-        try {
-            const db = await initIDB();
-            if (!db) return;
-            const tx = db.transaction(IDB_STORE, 'readwrite');
-            const store = tx.objectStore(IDB_STORE);
-            for (const item of entries) {
-                if (item && item.id) store.put(item);
-            }
-        } catch (e) { console.warn("IDB 저장 오류:", e); }
-    }
-
-    async function deleteFromIndexedDB(id) {
-        try {
-            const db = await initIDB();
-            if (!db) return;
-            const tx = db.transaction(IDB_STORE, 'readwrite');
-            tx.objectStore(IDB_STORE).delete(id);
-        } catch (e) {}
-    }
-
-    async function enqueueSyncAction(payload) {
-        try {
-            const db = await initIDB();
-            if (!db) return;
-            const tx = db.transaction(IDB_QUEUE, 'readwrite');
-            tx.objectStore(IDB_QUEUE).add({ payload, timestamp: Date.now() });
-        } catch (e) {}
-    }
-
-    async function processSyncQueue() {
-        if (isSyncingQueue || !navigator.onLine || !GOOGLE_APP_URL) return;
-        isSyncingQueue = true;
-        try {
-            const db = await initIDB();
-            if (!db) { isSyncingQueue = false; return; }
-
-            const getQueueItems = () => new Promise(res => {
-                const tx = db.transaction(IDB_QUEUE, 'readonly');
-                const req = tx.objectStore(IDB_QUEUE).getAll();
-                req.onsuccess = () => res(req.result || []);
-                req.onerror = () => res([]);
-            });
-
-            const queue = await getQueueItems();
-            for (const item of queue) {
-                try {
-                    await fetch(GOOGLE_APP_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'text/plain' },
-                        body: JSON.stringify(item.payload)
-                    });
-                    const delTx = db.transaction(IDB_QUEUE, 'readwrite');
-                    delTx.objectStore(IDB_QUEUE).delete(item.queueId);
-                } catch (netErr) {
-                    break;
-                }
-            }
-        } finally {
-            isSyncingQueue = false;
-        }
-    }
-
-    function saveToLocalStorage(data) {
-        try {
-            localStorage.setItem('myJournalDB', JSON.stringify(data));
-        } catch (e) {
-            try {
-                const lightCache = data.map((entry, idx) => {
-                    if (idx < 2) return entry;
-                    return {
-                        ...entry,
-                        media: (entry.media || []).map(m => ({
-                            type: m.type,
-                            viewUrl: m.viewUrl || "",
-                            thumbUrl: m.thumbUrl || "",
-                            thumb: m.thumb || "",
-                            base64: ""
-                        }))
-                    };
-                });
-                localStorage.setItem('myJournalDB', JSON.stringify(lightCache));
-            } catch (err2) {}
-        }
-    }
-
-    function generateMicroThumb(src) {
+    function readAll(storeName) {
         return new Promise(resolve => {
-            if (!src) { resolve(''); return; }
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.onload = () => {
-                try {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 44; canvas.height = 44;
-                    const ctx = canvas.getContext('2d');
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-                    const minSide = Math.min(img.width, img.height);
-                    ctx.drawImage(
-                        img, 
-                        (img.width - minSide) / 2, 
-                        (img.height - minSide) / 2, 
-                        minSide, minSide, 
-                        0, 0, 44, 44
-                    );
-                    resolve(canvas.toDataURL('image/jpeg', 0.55));
-                } catch(e) {
-                    resolve(src);
-                }
-            };
-            img.onerror = () => resolve(src);
-            img.src = src;
+            if (!database) { resolve([]); return; }
+            const tx = database.transaction(storeName, 'readonly');
+            const req = tx.objectStore(storeName).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
         });
     }
 
-    async function restoreAndHealAllData() {
-        const idbEntries = await loadFromIndexedDB();
-        const map = new Map();
-
-        journalDB.forEach(e => { if (e && e.id) map.set(e.id, e); });
-
-        if (idbEntries && idbEntries.length > 0) {
-            idbEntries.forEach(item => {
-                if (!map.has(item.id)) {
-                    map.set(item.id, item);
-                } else {
-                    const mem = map.get(item.id);
-                    if ((item.updatedAt || 0) > (mem.updatedAt || 0)) {
-                        map.set(item.id, item);
-                    }
-                }
-            });
-        }
-
-        try {
-            const db = await initIDB();
-            if (db) {
-                const tx = db.transaction(IDB_QUEUE, 'readonly');
-                const qReq = tx.objectStore(IDB_QUEUE).getAll();
-                qReq.onsuccess = () => {
-                    const qItems = qReq.result || [];
-                    let resurrected = false;
-                    qItems.forEach(qi => {
-                        if (qi.payload && qi.payload.action === 'SAVE_ENTRY' && qi.payload.id) {
-                            if (!map.has(qi.payload.id)) {
-                                map.set(qi.payload.id, qi.payload);
-                                resurrected = true;
-                            }
-                        }
-                    });
-                    if (resurrected) finalizeDB(map);
-                };
-            }
-        } catch(e) {}
-
-        finalizeDB(map);
+    function putItem(storeName, item) {
+        return new Promise((resolve, reject) => {
+            const tx = database.transaction(storeName, 'readwrite');
+            tx.objectStore(storeName).put(item);
+            tx.oncomplete = resolve;
+            tx.onabort = reject;
+        });
     }
 
-    function finalizeDB(map) {
-        journalDB = Array.from(map.values());
-        journalDB.sort((a, b) => ((b.date || '') + ' ' + (b.time || '')).localeCompare((a.date || '') + ' ' + (a.time || '')));
-        saveToLocalStorage(journalDB);
-        saveToIndexedDB(journalDB);
-        renderCalendar();
-        renderTimeline();
+    function deleteItem(storeName, key) {
+        return new Promise((resolve, reject) => {
+            const tx = database.transaction(storeName, 'readwrite');
+            tx.objectStore(storeName).delete(key);
+            tx.oncomplete = resolve;
+            tx.onabort = reject;
+        });
     }
 
+    // =========================================================================
+    // INITIALIZATION & SYNC
+    // =========================================================================
     async function init() {
         setupChips();
-        renderCalendar();
-        renderTimeline();
-
-        await restoreAndHealAllData();
-        syncFromCloud();
-        processSyncQueue();
-        setupPullToRefresh();
-        setupIOSScrollReset();
-        setupLifeCycleListeners();
+        try {
+            await openDB();
+            journalDB = (await readAll(IDB_STORE)).sort((a, b) => (b.date + ' ' + (b.time || '')).localeCompare(a.date + ' ' + (a.time || '')));
+            renderCalendar();
+            renderTimeline();
+            setupPullToRefresh();
+            setupLifeCycleListeners();
+            syncNow();
+            updateStorageUI();
+        } catch (e) {
+            alert('저장소 초기화 오류: ' + e.message);
+        }
     }
 
     function setupLifeCycleListeners() {
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 refreshSystemDate();
-                restoreAndHealAllData();
-                syncFromCloud();
-                processSyncQueue();
+                renderCalendar();
+                renderTimeline();
+                syncNow();
             }
-        });
-
-        window.addEventListener('pageshow', () => {
-            refreshSystemDate();
-            restoreAndHealAllData();
-            syncFromCloud();
-            processSyncQueue();
-        });
-
-        window.addEventListener('online', () => {
-            processSyncQueue();
-            syncFromCloud();
-        });
-    }
-
-    function setupIOSScrollReset() {
-        document.querySelectorAll('input, textarea').forEach(el => {
-            el.addEventListener('blur', () => {
-                setTimeout(() => {
-                    window.scrollTo(0, 0);
-                    document.body.scrollTop = 0;
-                }, 100);
-            });
         });
     }
 
     function setupPullToRefresh() {
-        const ind = document.getElementById('pullIndicator');
-        const txt = document.getElementById('pullText');
-        const timeline = document.getElementById('timelineSection');
-        let startY = 0;
-        let isPulling = false;
+        const ind = $('pullIndicator');
+        const timeline = $('timelineSection');
+        let startY = 0, isPulling = false;
 
-        document.addEventListener('touchstart', (e) => {
+        document.addEventListener('touchstart', e => {
             if (timeline.scrollTop <= 0) {
                 startY = e.touches[0].clientY;
                 isPulling = true;
             }
         }, { passive: true });
 
-        document.addEventListener('touchmove', (e) => {
+        document.addEventListener('touchmove', e => {
             if (!isPulling) return;
-            const currentY = e.touches[0].clientY;
-            const diff = currentY - startY;
-
+            const diff = e.touches[0].clientY - startY;
             if (diff > 10 && timeline.scrollTop <= 0) {
-                const pullDist = Math.min(diff * 0.45, 75);
+                const pullDist = Math.min(diff * 0.45, 60);
                 ind.classList.add('pulling');
-                ind.style.transform = `translateY(${pullDist}px)`;
-
-                if (pullDist > 45) {
-                    ind.classList.add('ready');
-                    txt.innerText = "손을 떼면 새로고침";
-                } else {
-                    ind.classList.remove('ready');
-                    txt.innerText = "당겨서 새로고침";
-                }
+                ind.style.transform = `translateY(${pullDist - 44}px)`;
+                if (pullDist > 40) ind.classList.add('ready');
+                else ind.classList.remove('ready');
             }
         }, { passive: true });
 
         document.addEventListener('touchend', () => {
             if (!isPulling) return;
             isPulling = false;
-
             if (ind.classList.contains('ready')) {
                 ind.classList.remove('ready', 'pulling');
                 ind.classList.add('refreshing');
-                txt.innerText = "데이터 동기화 중...";
-
-                syncFromCloud(() => {
-                    processSyncQueue();
-                    restoreAndHealAllData();
-                    txt.innerText = "동기화 완료 ✔";
+                syncNow().finally(() => {
                     setTimeout(() => {
                         ind.classList.remove('refreshing');
                         ind.style.transform = '';
-                    }, 600);
+                    }, 500);
                 });
             } else {
                 ind.classList.remove('pulling', 'ready');
@@ -894,114 +700,174 @@
         });
     }
 
-    function syncFromCloud(callback) {
-        if (!GOOGLE_APP_URL || !navigator.onLine) { if (callback) callback(); return; }
-        const cacheBusterUrl = GOOGLE_APP_URL + (GOOGLE_APP_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
-        
-        fetch(cacheBusterUrl, { cache: 'no-store' })
-            .then(res => res.json())
-            .then(res => {
-                if (res.status === "success" && Array.isArray(res.data)) {
-                    const cloudList = res.data;
-                    const mergedMap = new Map();
-
-                    journalDB.forEach(localItem => {
-                        if (localItem && localItem.id) mergedMap.set(localItem.id, localItem);
-                    });
-
-                    cloudList.forEach(cloudItem => {
-                        if (!cloudItem || !cloudItem.id) return;
-                        
-                        if (!mergedMap.has(cloudItem.id)) {
-                            mergedMap.set(cloudItem.id, cloudItem);
-                        } else {
-                            const localItem = mergedMap.get(cloudItem.id);
-                            
-                            if (cloudItem.updatedAt > (localItem.updatedAt || 0)) {
-                                if (localItem.media && cloudItem.media) {
-                                    cloudItem.media.forEach((cm, idx) => {
-                                        const lm = localItem.media[idx];
-                                        if (lm && lm.base64 && lm.base64.length > 6000) {
-                                            cm.base64 = lm.base64;
-                                        }
-                                    });
-                                }
-                                if (!cloudItem.microThumb && localItem.microThumb) {
-                                    cloudItem.microThumb = localItem.microThumb;
-                                }
-                                mergedMap.set(cloudItem.id, cloudItem);
-                            } else {
-                                if (cloudItem.media && cloudItem.media.length > 0) {
-                                    localItem.media = localItem.media || [];
-                                    cloudItem.media.forEach((cm, idx) => {
-                                        if (localItem.media[idx]) {
-                                            if (cm.viewUrl) localItem.media[idx].viewUrl = cm.viewUrl;
-                                            if (cm.thumbUrl) localItem.media[idx].thumbUrl = cm.thumbUrl;
-                                        }
-                                    });
-                                }
-                                if (!localItem.microThumb && cloudItem.microThumb) {
-                                    localItem.microThumb = cloudItem.microThumb;
-                                }
-                            }
-                        }
-                    });
-
-                    finalizeDB(mergedMap);
-                }
-                if (callback) callback();
-            }).catch(() => {
-                if (callback) callback();
+    async function api(payload) {
+        if (!token()) throw new Error('설정(⚙️)에서 클라우드 연결 암호를 먼저 입력해 주세요.');
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 45000);
+        try {
+            const response = await fetch(GOOGLE_APP_URL, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ ...payload, token: token() }),
+                signal: controller.signal
             });
+            const r = await response.json();
+            if (r.status !== 'success') throw new Error(r.message || '서버 응답 오류');
+            return r;
+        } finally { clearTimeout(timer); }
     }
 
-    function renderCalendar() {
-        document.getElementById('calMonthTitle').innerText = `${currentYear}년 ${currentMonth + 1}월`;
-        const grid = document.getElementById('calendarGrid');
-        grid.innerHTML = '';
-
-        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-        const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
-        const todayStr = getLocalIsoDate(todayObj);
-
-        for (let i = 0; i < firstDay; i++) {
-            grid.innerHTML += `<div></div>`;
-        }
-
-        for (let day = 1; day <= lastDate; day++) {
-            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const entries = journalDB.filter(e => e.date === dateStr);
-            const isToday = (dateStr === todayStr) ? 'today' : '';
-            const isSelected = (dateStr === activeDateStr) ? 'selected' : '';
-
-            let thumbHtml = '';
-            let resolvedThumbUrl = '';
-
-            for (const ent of entries) {
-                const t = getCalendarThumbnail(ent);
-                if (t) {
-                    resolvedThumbUrl = t;
+    async function syncNow() {
+        if (isSyncing || !navigator.onLine || !token()) return;
+        isSyncing = true;
+        try {
+            // 1. 대기열 큐 전송
+            const queue = await readAll(IDB_QUEUE);
+            for (const q of queue) {
+                try {
+                    const r = await api({
+                        ...q.payload,
+                        action: q.payload.deleted ? 'DELETE_ENTRY' : 'SAVE_ENTRY',
+                        opId: q.opId,
+                        baseRevision: q.baseRevision || 0
+                    });
+                    await deleteItem(IDB_QUEUE, q.queueId);
+                    
+                    // 기기 엔티티에 fileId 정보 병합
+                    const updated = journalDB.find(e => e.id === q.payload.id);
+                    if (updated && r.entry?.media) {
+                        r.entry.media.forEach((rm, i) => {
+                            if (updated.media[i]) {
+                                updated.media[i].fileId = rm.fileId;
+                                updated.media[i].viewUrl = rm.viewUrl;
+                            }
+                        });
+                        await putItem(IDB_STORE, updated);
+                    }
+                } catch (err) {
                     break;
                 }
             }
 
-            if (resolvedThumbUrl) {
-                thumbHtml = `<img src="${resolvedThumbUrl}" class="cal-thumb" alt="thumb" onerror="this.style.display='none'">`;
-            } else if (entries.length > 0) {
-                thumbHtml = `<div class="cal-dot"></div>`;
+            // 2. 클라우드 목록 동기화 (기기 Base64 원본 절대 보존)
+            const r = await api({ action: 'LIST' });
+            if (Array.isArray(r.data)) {
+                const map = new Map(journalDB.map(e => [e.id, e]));
+                for (const cloud of r.data) {
+                    if (!cloud || !cloud.id) continue;
+                    if (!map.has(cloud.id)) {
+                        map.set(cloud.id, cloud);
+                    } else {
+                        const local = map.get(cloud.id);
+                        if (cloud.media && local.media) {
+                            cloud.media.forEach((cm, i) => {
+                                const lm = local.media[i];
+                                if (lm && lm.base64) cm.base64 = lm.base64; // 로컬 고화질 보존
+                                if (lm && lm.thumb) cm.thumb = lm.thumb;   // 로컬 썸네일 보존
+                            });
+                        }
+                        if (cloud.updatedAt > (local.updatedAt || 0)) {
+                            map.set(cloud.id, cloud);
+                        }
+                    }
+                }
+                journalDB = Array.from(map.values()).sort((a, b) => (b.date + ' ' + (b.time || '')).localeCompare(a.date + ' ' + (a.time || '')));
+                for (const e of journalDB) await putItem(IDB_STORE, e);
+                renderCalendar();
+                renderTimeline();
+                updateStorageUI();
             }
-
-            grid.innerHTML += `
-                <div class="cal-cell ${isToday} ${isSelected}" data-date="${dateStr}" onclick="selectDate('${dateStr}')">
-                    <span class="cal-date-num">${day}</span>
-                    ${thumbHtml}
-                </div>
-            `;
+        } catch (e) {
+            console.log("동기화 보류: ", e.message);
+        } finally {
+            isSyncing = false;
         }
     }
 
-    function selectDate(dStr) {
-        activeDateStr = dStr;
+    // =========================================================================
+    // 캐시 다이어트 & 스마트 로딩
+    // =========================================================================
+    async function cleanOldMediaCache(days = 60) {
+        const threshold = Date.now() - (days * 24 * 60 * 60 * 1000);
+        let cleanedPhotos = 0;
+
+        for (const entry of journalDB) {
+            const entryTime = new Date(entry.date).getTime() || 0;
+            if (entryTime < threshold && Array.isArray(entry.media)) {
+                for (const m of entry.media) {
+                    // 구글 드라이브에 안전 업로드된 사진만 고화질 Base64 비움
+                    if (m.fileId && m.base64) {
+                        m.base64 = "";
+                        cleanedPhotos++;
+                    }
+                }
+                await putItem(IDB_STORE, entry);
+            }
+        }
+
+        alert(`60일 이전 사진 중 ${cleanedPhotos}개의 고화질 캐시를 정리하여 기기 용량을 확보했습니다.\n(썸네일과 일기는 유지되며 필요 시 탭하여 원본을 불러옵니다)`);
+        renderTimeline();
+        updateStorageUI();
+    }
+
+    async function loadFullMediaFromDrive(entry, m, tileElement) {
+        if (!m.fileId) {
+            alert("구글 드라이브 백업 정보를 찾을 수 없습니다.");
+            return;
+        }
+        const label = tileElement.querySelector('.media-message');
+        if (label) label.style.display = 'flex';
+        if (label) label.textContent = '드라이브에서 불러오는 중…';
+
+        try {
+            const r = await api({
+                action: 'GET_MEDIA',
+                entryId: entry.id,
+                mediaId: m.id,
+                fileId: m.fileId
+            });
+            m.base64 = r.dataUrl;
+            await putItem(IDB_STORE, entry);
+
+            const img = tileElement.querySelector('img');
+            if (img) img.src = r.dataUrl;
+            if (label) label.style.display = 'none';
+
+            viewMedia(r.dataUrl, m.type, m.thumb);
+        } catch (e) {
+            alert('사진을 불러오지 못했습니다: ' + e.message);
+            if (label) label.textContent = '불러오기 실패';
+        }
+    }
+
+    function updateStorageUI() {
+        const totalEntries = journalDB.filter(e => !e.deleted).length;
+        let cachedPhotos = 0, driveOnlyPhotos = 0;
+
+        journalDB.forEach(e => {
+            (e.media || []).forEach(m => {
+                if (m.base64) cachedPhotos++;
+                else if (m.fileId) driveOnlyPhotos++;
+            });
+        });
+
+        $('storageStatusBox').innerHTML = `
+            <strong>기기 저장 상태 (하루 5장 제한)</strong><br>
+            • 총 일기: <strong>${totalEntries}일</strong><br>
+            • 기기 고화질 보관 사진: <strong>${cachedPhotos}장</strong> (0초 즉각 로딩)<br>
+            • 드라이브 스트리밍 사진: <strong>${driveOnlyPhotos}장</strong> (용량 다이어트 상태)
+        `;
+    }
+
+    // =========================================================================
+    // 캘린더 & 타임라인 렌더링
+    // =========================================================================
+    function goToday() {
+        const t = new Date();
+        currentYear = t.getFullYear();
+        currentMonth = t.getMonth();
+        activeDateStr = getLocalIsoDate(t);
         renderCalendar();
         renderTimeline();
     }
@@ -1013,33 +879,59 @@
         renderCalendar();
     }
 
-    function goToday() {
-        const t = new Date();
-        currentYear = t.getFullYear();
-        currentMonth = t.getMonth();
-        activeDateStr = getLocalIsoDate(t);
+    function selectDate(dStr) {
+        activeDateStr = dStr;
         renderCalendar();
         renderTimeline();
+    }
+
+    function renderCalendar() {
+        $('calMonthTitle').innerText = `${currentYear}년 ${currentMonth + 1}월`;
+        const grid = $('calendarGrid');
+        grid.innerHTML = '';
+
+        const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+        const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const todayStr = getLocalIsoDate(todayObj);
+
+        for (let i = 0; i < firstDay; i++) grid.innerHTML += '<div></div>';
+
+        for (let day = 1; day <= lastDate; day++) {
+            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const entries = journalDB.filter(e => !e.deleted && e.date === dateStr);
+            const isToday = (dateStr === todayStr) ? 'today' : '';
+            const isSelected = (dateStr === activeDateStr) ? 'selected' : '';
+
+            let badgeHtml = '';
+            const hasThumb = entries.find(e => e.microThumb || (e.media && e.media[0]));
+            if (hasThumb) {
+                const src = hasThumb.microThumb || (hasThumb.media[0] && (hasThumb.media[0].thumb || hasThumb.media[0].base64));
+                badgeHtml = `<img src="${src}" class="cal-thumb" alt="thumb">`;
+            } else if (entries.length > 0) {
+                badgeHtml = `<div class="cal-dot"></div>`;
+            }
+
+            grid.innerHTML += `
+                <div class="cal-cell ${isToday} ${isSelected}" onclick="selectDate('${dateStr}')">
+                    <span class="cal-date-num">${day}</span>
+                    ${badgeHtml}
+                </div>
+            `;
+        }
     }
 
     function renderTimeline() {
         const parts = activeDateStr.split('-');
         const targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
         const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-        document.getElementById('timelineDateTitle').innerText = 
-            `${targetDate.getFullYear()}년 ${targetDate.getMonth() + 1}월 ${targetDate.getDate()}일 (${dayNames[targetDate.getDay()]})`;
+        $('timelineDateTitle').innerText = `${targetDate.getFullYear()}년 ${targetDate.getMonth() + 1}월 ${targetDate.getDate()}일 (${dayNames[targetDate.getDay()]})`;
 
-        const container = document.getElementById('timelineCards');
+        const container = $('timelineCards');
         container.innerHTML = '';
 
-        const entries = journalDB.filter(e => e.date === activeDateStr);
+        const entries = journalDB.filter(e => !e.deleted && e.date === activeDateStr);
         if (entries.length === 0) {
-            container.innerHTML = `
-                <div class="empty-timeline">
-                    이 날에 작성된 일기가 없습니다.<br>
-                    우측 상단 <strong>[➕ 기록 쓰기]</strong>를 눌러 추억을 남겨보세요.
-                </div>
-            `;
+            container.innerHTML = `<div class="empty-timeline">이 날에 작성된 일기가 없습니다.<br>우측 상단 <strong>[➕ 기록 쓰기]</strong>를 눌러 추억을 남겨보세요.</div>`;
             return;
         }
 
@@ -1047,26 +939,18 @@
             let mediaHtml = '';
             if (entry.media && entry.media.length > 0) {
                 mediaHtml = `<div class="media-grid">`;
-                entry.media.forEach(m => {
+                entry.media.forEach((m, idx) => {
                     const isVideo = (m.type === 'video');
-                    
-                    if (isVideo) {
-                        const posterUrl = getVideoPoster(m);
-                        const playUrl = m.viewUrl || m.base64 || '';
-                        mediaHtml += `
-                            <div class="media-item" onclick="viewMedia('${playUrl}', 'video', '${posterUrl}')">
-                                <img src="${posterUrl}" loading="lazy" alt="동영상 썸네일">
-                                <div class="media-video-badge">▶</div>
-                            </div>
-                        `;
-                    } else {
-                        const highResUrl = getCardHighResSource(m);
-                        mediaHtml += `
-                            <div class="media-item" onclick="viewMedia('${highResUrl}', 'image')">
-                                <img src="${highResUrl}" loading="lazy" alt="일기 사진">
-                            </div>
-                        `;
-                    }
+                    const displaySrc = m.base64 || m.thumb || '';
+                    const hasFull = !!m.base64;
+
+                    mediaHtml += `
+                        <div class="media-item" id="media_${entry.id}_${idx}" onclick="handleMediaClick('${entry.id}', ${idx})">
+                            <img src="${displaySrc}" loading="lazy" alt="일기 사진">
+                            ${!hasFull ? `<span class="media-message">탭하여 고화질 로드</span>` : ''}
+                            ${isVideo ? `<div class="media-video-badge">▶</div>` : ''}
+                        </div>
+                    `;
                 });
                 mediaHtml += `</div>`;
             }
@@ -1094,225 +978,28 @@
         });
     }
 
-    function setupChips() {
-        document.querySelectorAll('#moodChips .chip-btn').forEach(btn => {
-            btn.onclick = () => {
-                if (selectedMood === btn.dataset.val) {
-                    selectedMood = "";
-                    btn.classList.remove('selected');
-                } else {
-                    document.querySelectorAll('#moodChips .chip-btn').forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    selectedMood = btn.dataset.val;
-                }
-            };
-        });
-        document.querySelectorAll('#weatherChips .chip-btn').forEach(btn => {
-            btn.onclick = () => {
-                if (selectedWeather === btn.dataset.val) {
-                    selectedWeather = "";
-                    btn.classList.remove('selected');
-                } else {
-                    document.querySelectorAll('#weatherChips .chip-btn').forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    selectedWeather = btn.dataset.val;
-                }
-            };
-        });
-    }
+    function handleMediaClick(entryId, mediaIdx) {
+        const entry = journalDB.find(e => e.id === entryId);
+        if (!entry || !entry.media[mediaIdx]) return;
+        const m = entry.media[mediaIdx];
+        const tile = document.getElementById(`media_${entryId}_${mediaIdx}`);
 
-    function openEntryModal(editId = null) {
-        currentEditingId = editId;
-        const saveBtn = document.getElementById('saveBtn');
-
-        if (editId) {
-            const entry = journalDB.find(e => e.id === editId);
-            if (!entry) return;
-
-            document.getElementById('modalDateLabel').innerText = `${entry.date} 기록 수정`;
-            document.getElementById('journalContent').value = entry.content || '';
-            document.getElementById('locInput').value = entry.location || '';
-            
-            selectedMood = entry.mood || "";
-            selectedWeather = entry.weather || "";
-            document.querySelectorAll('#moodChips .chip-btn').forEach(b => {
-                b.classList.toggle('selected', b.dataset.val === selectedMood);
-            });
-            document.querySelectorAll('#weatherChips .chip-btn').forEach(b => {
-                b.classList.toggle('selected', b.dataset.val === selectedWeather);
-            });
-
-            pendingMediaFiles = (entry.media || []).map(m => ({ ...m }));
-            renderPreviewThumbs();
-            saveBtn.innerText = "수정 완료";
+        if (m.base64) {
+            viewMedia(m.base64, m.type, m.thumb);
         } else {
-            document.getElementById('modalDateLabel').innerText = `${activeDateStr} 새 기록`;
-            document.getElementById('journalContent').value = '';
-            document.getElementById('locInput').value = '';
-            pendingMediaFiles = [];
-            renderPreviewThumbs();
-            selectedMood = ""; selectedWeather = "";
-            document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('selected'));
-            saveBtn.innerText = "저장하기";
-        }
-
-        document.getElementById('entryModal').classList.add('active');
-    }
-
-    function closeEntryModal() {
-        document.getElementById('entryModal').classList.remove('active');
-        currentEditingId = null;
-        if (isRecording) stopSpeech();
-        setTimeout(() => { window.scrollTo(0, 0); document.body.scrollTop = 0; }, 50);
-    }
-
-    function fetchCurrentLocation() {
-        if (!navigator.geolocation) { alert("위치 권한을 지원하지 않는 환경입니다."); return; }
-        const locInput = document.getElementById('locInput');
-        locInput.placeholder = "위치 확인 중...";
-
-        navigator.geolocation.getCurrentPosition(pos => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
-                .then(r => r.json())
-                .then(data => {
-                    const addr = data.address || {};
-                    const city = addr.city || addr.province || addr.county || "";
-                    const district = addr.borough || addr.suburb || addr.district || "";
-                    locInput.value = `${city} ${district}`.trim() || "현재 위치";
-                }).catch(() => {
-                    locInput.value = "대한민국 서울";
-                });
-        }, () => {
-            locInput.value = "위치 확인 불가";
-        }, { timeout: 7000 });
-    }
-
-    function toggleSpeech() {
-        if (isRecording) stopSpeech();
-        else startSpeech();
-    }
-
-    function startSpeech() {
-        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRec) {
-            alert("키보드 우측 하단 마이크(받아쓰기 🎙️)를 누르시면 가장 정확하게 입력됩니다!");
-            document.getElementById('journalContent').focus();
-            return;
-        }
-
-        try {
-            if (recognition) { recognition.abort(); }
-            recognition = new SpeechRec();
-            recognition.lang = 'ko-KR';
-            recognition.continuous = true;
-            recognition.interimResults = true;
-
-            const textarea = document.getElementById('journalContent');
-            const voiceBtn = document.getElementById('voiceBtn');
-            baseSpeechText = textarea.value;
-
-            recognition.onstart = () => {
-                isRecording = true;
-                voiceBtn.classList.add('recording');
-                speechTimer = setTimeout(() => { stopSpeech(); }, 15000);
-            };
-
-            recognition.onresult = (e) => {
-                let interim = '';
-                let finalStr = '';
-
-                for (let i = e.resultIndex; i < e.results.length; i++) {
-                    const transcript = e.results[i][0].transcript;
-                    if (e.results[i].isFinal) finalStr += transcript;
-                    else interim += transcript;
-                }
-
-                if (finalStr) {
-                    baseSpeechText = (baseSpeechText ? baseSpeechText + ' ' : '') + finalStr;
-                }
-                textarea.value = baseSpeechText + (interim ? (baseSpeechText ? ' ' : '') + interim : '');
-            };
-
-            recognition.onerror = () => { stopSpeech(); };
-            recognition.onend = () => { stopSpeech(); };
-
-            recognition.start();
-        } catch (err) {
-            stopSpeech();
+            loadFullMediaFromDrive(entry, m, tile);
         }
     }
 
-    function stopSpeech() {
-        if (speechTimer) { clearTimeout(speechTimer); speechTimer = null; }
-        if (recognition) {
-            try { recognition.stop(); } catch(e) {}
-            recognition = null;
-        }
-        isRecording = false;
-        const voiceBtn = document.getElementById('voiceBtn');
-        if (voiceBtn) voiceBtn.classList.remove('recording');
-    }
-
-    async function handleFileSelect(e) {
-        const files = Array.from(e.target.files);
-        if (!files.length) return;
-        if (pendingMediaFiles.length + files.length > 10) {
-            alert("미디어는 한 번에 최대 10개까지 첨부 가능합니다.");
-            return;
-        }
-
-        const saveBtn = document.getElementById('saveBtn');
-        saveBtn.disabled = true;
-        saveBtn.innerText = "미디어 최적화 중...";
-
-        try {
-            for (const file of files) {
-                if (file.type.startsWith('image/')) {
-                    const res = await processImage(file);
-                    pendingMediaFiles.push({
-                        type: 'image',
-                        base64: res.compressedBase64
-                    });
-                } else if (file.type.startsWith('video/')) {
-                    if (file.size > 25 * 1024 * 1024) {
-                        alert(`영상 파일(${file.name})이 25MB를 초과하여 제외되었습니다.`);
-                        continue;
-                    }
-                    const thumb = await extractVideoThumbnail(file);
-                    const videoBase64 = await readFileAsBase64(file);
-                    pendingMediaFiles.push({
-                        type: 'video',
-                        base64: videoBase64,
-                        thumb: thumb
-                    });
-                }
-            }
-        } finally {
-            saveBtn.disabled = false;
-            saveBtn.innerText = currentEditingId ? "수정 완료" : "저장하기";
-            e.target.value = '';
-        }
-        renderPreviewThumbs();
-    }
-
-    function readFileAsBase64(file) {
+    // =========================================================================
+    // 파일 압축 및 업로드 (하루 5장 제한 + 750px 최적화)
+    // =========================================================================
+    function compressImage(file, maxDim = 750, quality = 0.74) {
         return new Promise(resolve => {
             const reader = new FileReader();
-            reader.onload = e => resolve(e.target.result);
-            reader.onerror = () => resolve('');
-            reader.readAsDataURL(file);
-        });
-    }
-
-    function processImage(file) {
-        return new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = e => {
                 const img = new Image();
                 img.onload = () => {
-                    const maxDim = 900;
                     let w = img.width, h = img.height;
                     if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
                     else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
@@ -1320,12 +1007,17 @@
                     const canvas = document.createElement('canvas');
                     canvas.width = w; canvas.height = h;
                     const ctx = canvas.getContext('2d');
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
                     ctx.drawImage(img, 0, 0, w, h);
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.78);
+                    const compressed = canvas.toDataURL('image/jpeg', quality);
 
-                    resolve({ compressedBase64 });
+                    // 개별 썸네일 (80px 정방형)
+                    const thumbCanvas = document.createElement('canvas');
+                    thumbCanvas.width = 80; thumbCanvas.height = 80;
+                    const min = Math.min(img.width, img.height);
+                    thumbCanvas.getContext('2d').drawImage(img, (img.width - min) / 2, (img.height - min) / 2, min, min, 0, 0, 80, 80);
+                    const thumb = thumbCanvas.toDataURL('image/jpeg', 0.6);
+
+                    resolve({ compressed, thumb });
                 };
                 img.src = e.target.result;
             };
@@ -1333,135 +1025,139 @@
         });
     }
 
-    function extractVideoThumbnail(file) {
-        return new Promise(resolve => {
-            const video = document.createElement('video');
-            video.preload = 'metadata';
-            video.src = URL.createObjectURL(file);
-            video.muted = true;
-            video.playsInline = true;
-            video.onloadeddata = () => { video.currentTime = 1; };
-            video.onseeked = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = 160; canvas.height = 160;
-                const ctx = canvas.getContext('2d');
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                const minSide = Math.min(video.videoWidth, video.videoHeight);
-                ctx.drawImage(video, (video.videoWidth - minSide)/2, (video.videoHeight - minSide)/2, minSide, minSide, 0, 0, 160, 160);
-                resolve(canvas.toDataURL('image/jpeg', 0.65));
-            };
-            video.onerror = () => resolve('');
-        });
-    }
+    async function handleFileSelect(e) {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
 
-    function renderPreviewThumbs() {
-        const container = document.getElementById('previewThumbs');
-        container.innerHTML = '';
-        pendingMediaFiles.forEach((m, idx) => {
-            const isVideo = (m.type === 'video');
-            const displayUrl = isVideo ? getVideoPoster(m) : getCardHighResSource(m);
-            const tag = isVideo ? '<span class="preview-video-tag">영상</span>' : '';
-            container.innerHTML += `
-                <div class="preview-thumb-box">
-                    <img src="${displayUrl}">
-                    ${tag}
-                    <button class="preview-del" onclick="removePendingMedia(${idx})">✕</button>
-                </div>
-            `;
-        });
-        document.getElementById('fileCountLabel').innerText = `${pendingMediaFiles.length}개 선택됨`;
-    }
-
-    function removePendingMedia(idx) {
-        pendingMediaFiles.splice(idx, 1);
-        renderPreviewThumbs();
-    }
-
-    async function saveEntry() {
-        const content = document.getElementById('journalContent').value.trim();
-        const hasMedia = pendingMediaFiles.length > 0;
-        const hasMood = !!selectedMood;
-        const hasWeather = !!selectedWeather;
-
-        if (!content && !hasMedia && !hasMood && !hasWeather) {
-            alert("일기 내용(글, 사진, 기분/날씨 중 하나)을 입력해 주세요.");
+        // 하루 5장 제한 검증
+        if (pendingMediaFiles.length + files.length > 5) {
+            alert("사진/영상은 하루 최대 5장까지만 등록할 수 있습니다.");
+            e.target.value = '';
             return;
         }
 
-        const saveBtn = document.getElementById('saveBtn');
+        const saveBtn = $('saveBtn');
         saveBtn.disabled = true;
-        saveBtn.innerText = "저장 중...";
+        saveBtn.innerText = "사진 최적화 중…";
 
         try {
-            let microThumb = "";
-            if (pendingMediaFiles.length > 0) {
-                const firstMediaSrc = pendingMediaFiles[0].base64 || pendingMediaFiles[0].thumb || "";
-                microThumb = await generateMicroThumb(firstMediaSrc);
+            for (const file of files) {
+                if (file.type.startsWith('image/')) {
+                    const res = await compressImage(file);
+                    pendingMediaFiles.push({
+                        id: uid(),
+                        type: 'image',
+                        base64: res.compressed,
+                        thumb: res.thumb
+                    });
+                } else if (file.type.startsWith('video/')) {
+                    if (file.size > 25 * 1024 * 1024) {
+                        alert("영상은 25MB 이하로 등록해 주세요.");
+                        continue;
+                    }
+                    const b64 = await new Promise(res => {
+                        const r = new FileReader();
+                        r.onload = ev => res(ev.target.result);
+                        r.readAsDataURL(file);
+                    });
+                    pendingMediaFiles.push({
+                        id: uid(),
+                        type: 'video',
+                        base64: b64,
+                        thumb: ''
+                    });
+                }
             }
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerText = currentEditingId ? "수정 완료" : "저장하기";
+            e.target.value = '';
+            renderPreviewThumbs();
+        }
+    }
 
-            const nowTimestamp = Date.now();
-            let savedEntry = null;
+    function renderPreviewThumbs() {
+        const box = $('previewThumbs');
+        box.innerHTML = '';
+        pendingMediaFiles.forEach((m, idx) => {
+            box.innerHTML += `
+                <div class="preview-thumb-box">
+                    <img src="${m.thumb || m.base64}">
+                    <button class="preview-del" onclick="pendingMediaFiles.splice(${idx}, 1); renderPreviewThumbs();">✕</button>
+                </div>
+            `;
+        });
+        $('fileCountLabel').innerText = `${pendingMediaFiles.length}개 선택됨 (최대 5개)`;
+    }
+
+    // =========================================================================
+    // 일기 저장 및 삭제
+    // =========================================================================
+    async function saveEntry() {
+        const content = $('journalContent').value.trim();
+        if (!content && pendingMediaFiles.length === 0 && !selectedMood && !selectedWeather) {
+            alert("일기 내용을 입력해 주세요.");
+            return;
+        }
+
+        const saveBtn = $('saveBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerText = "저장 중…";
+
+        try {
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const microThumb = pendingMediaFiles[0]?.thumb || "";
+            let entry = null;
 
             if (currentEditingId) {
-                const idx = journalDB.findIndex(e => e.id === currentEditingId);
-                if (idx !== -1) {
-                    journalDB[idx].mood = selectedMood || "";
-                    journalDB[idx].weather = selectedWeather || "";
-                    journalDB[idx].location = document.getElementById('locInput').value.trim();
-                    journalDB[idx].content = content;
-                    journalDB[idx].media = pendingMediaFiles.map(m => ({
-                        type: m.type || 'image',
-                        base64: m.base64 || "",
-                        viewUrl: m.viewUrl || "",
-                        thumbUrl: m.thumbUrl || "",
-                        thumb: m.thumb || ""
-                    }));
-                    journalDB[idx].microThumb = microThumb || journalDB[idx].microThumb || "";
-                    journalDB[idx].updatedAt = nowTimestamp;
-                    savedEntry = journalDB[idx];
+                entry = journalDB.find(e => e.id === currentEditingId);
+                if (entry) {
+                    entry.mood = selectedMood;
+                    entry.weather = selectedWeather;
+                    entry.location = $('locInput').value.trim();
+                    entry.content = content;
+                    entry.media = clone(pendingMediaFiles);
+                    if (microThumb) entry.microThumb = microThumb;
+                    entry.updatedAt = Date.now();
                 }
             } else {
-                const now = new Date();
-                const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                const newId = 'entry_' + nowTimestamp;
-
-                savedEntry = {
-                    id: newId,
+                entry = {
+                    id: 'entry_' + Date.now(),
                     date: activeDateStr,
                     time: timeStr,
-                    mood: selectedMood || "",
-                    weather: selectedWeather || "",
-                    location: document.getElementById('locInput').value.trim(),
+                    mood: selectedMood,
+                    weather: selectedWeather,
+                    location: $('locInput').value.trim(),
                     content: content,
-                    media: pendingMediaFiles.map(m => ({
-                        type: m.type || 'image',
-                        base64: m.base64 || "",
-                        viewUrl: m.viewUrl || "",
-                        thumbUrl: m.thumbUrl || "",
-                        thumb: m.thumb || ""
-                    })),
+                    media: clone(pendingMediaFiles),
                     microThumb: microThumb,
-                    updatedAt: nowTimestamp
+                    updatedAt: Date.now(),
+                    revision: 0,
+                    deleted: false
                 };
-                journalDB.unshift(savedEntry);
+                journalDB.unshift(entry);
             }
 
-            await saveToIndexedDB(journalDB);
-            saveToLocalStorage(journalDB);
+            // 기기 IndexedDB 영구 저장
+            await putItem(IDB_STORE, entry);
+
+            // 전송 대기열 추가
+            const opId = uid();
+            await putItem(IDB_QUEUE, {
+                opId,
+                baseRevision: entry.revision || 0,
+                timestamp: Date.now(),
+                payload: { ...clone(entry), action: 'SAVE_ENTRY' }
+            });
+
             renderCalendar();
             renderTimeline();
             closeEntryModal();
-
-            if (savedEntry) {
-                const syncPayload = { action: 'SAVE_ENTRY', ...savedEntry };
-                await enqueueSyncAction(syncPayload);
-                processSyncQueue();
-            }
+            updateStorageUI();
+            syncNow();
         } catch (err) {
-            console.error("저장 오류:", err);
-            alert("저장 처리 중 오류가 발생했습니다.");
-            closeEntryModal();
+            alert("저장 오류: " + err.message);
         } finally {
             saveBtn.disabled = false;
             saveBtn.innerText = "저장하기";
@@ -1470,142 +1166,193 @@
 
     async function deleteEntry(id) {
         if (!confirm("이 일기 기록을 삭제할까요?")) return;
-        journalDB = journalDB.filter(e => e.id !== id);
-        
-        await deleteFromIndexedDB(id);
-        saveToLocalStorage(journalDB);
+        const entry = journalDB.find(e => e.id === id);
+        if (!entry) return;
+
+        entry.deleted = true;
+        entry.updatedAt = Date.now();
+        await putItem(IDB_STORE, entry);
+
+        await putItem(IDB_QUEUE, {
+            opId: uid(),
+            baseRevision: entry.revision || 0,
+            timestamp: Date.now(),
+            payload: { ...clone(entry), action: 'DELETE_ENTRY' }
+        });
+
         renderCalendar();
         renderTimeline();
-
-        const delPayload = { action: 'DELETE_ENTRY', id: id };
-        await enqueueSyncAction(delPayload);
-        processSyncQueue();
+        updateStorageUI();
+        syncNow();
     }
 
-    function toggleSearch(show) {
-        const modal = document.getElementById('searchModal');
-        if (show) {
-            modal.classList.add('active');
-            document.getElementById('searchInput').focus();
-        } else {
-            modal.classList.remove('active');
-            document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search'));
-        }
-    }
-
-    function onSearch() {
-        const q = document.getElementById('searchInput').value.trim().toLowerCase();
-        const resBox = document.getElementById('searchResults');
-        resBox.innerHTML = '';
-        document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search'));
-
-        if (!q) return;
-
-        const matched = journalDB.filter(e => 
-            (e.content && e.content.toLowerCase().includes(q)) || 
-            (e.location && e.location.toLowerCase().includes(q))
-        );
-
-        matched.forEach(e => {
-            const cell = document.querySelector(`.cal-cell[data-date="${e.date}"]`);
-            if (cell) cell.classList.add('has-search');
-
-            resBox.innerHTML += `
-                <div class="search-item" onclick="selectDate('${e.date}'); toggleSearch(false);">
-                    <strong>${e.date} (${formatDisplayTime(e.time)})</strong>: ${e.content.substring(0, 30)}...
-                </div>
-            `;
+    // =========================================================================
+    // 모달 및 UI 헬퍼
+    // =========================================================================
+    function setupChips() {
+        document.querySelectorAll('#moodChips .chip-btn').forEach(btn => {
+            btn.onclick = () => {
+                selectedMood = selectedMood === btn.dataset.val ? "" : btn.dataset.val;
+                document.querySelectorAll('#moodChips .chip-btn').forEach(b => b.classList.toggle('selected', b.dataset.val === selectedMood));
+            };
+        });
+        document.querySelectorAll('#weatherChips .chip-btn').forEach(btn => {
+            btn.onclick = () => {
+                selectedWeather = selectedWeather === btn.dataset.val ? "" : btn.dataset.val;
+                document.querySelectorAll('#weatherChips .chip-btn').forEach(b => b.classList.toggle('selected', b.dataset.val === selectedWeather));
+            };
         });
     }
 
-    function viewMedia(url, type, posterUrl = '') {
-        const box = document.getElementById('lightboxContent');
-        if (type === 'video') {
-            box.innerHTML = `
-                <video src="${url}" poster="${posterUrl}" controls autoplay playsinline style="max-width:95%; max-height:85vh; border-radius:8px;"></video>
-            `;
+    function openEntryModal(editId = null) {
+        currentEditingId = editId;
+        pendingMediaFiles = [];
+        if (editId) {
+            const entry = journalDB.find(e => e.id === editId);
+            if (!entry) return;
+            $('modalDateLabel').innerText = `${entry.date} 기록 수정`;
+            $('journalContent').value = entry.content \vert{}\vert{} '';$('locInput').value = entry.location || '';
+            selectedMood = entry.mood || '';
+            selectedWeather = entry.weather || '';
+            pendingMediaFiles = (entry.media || []).map(m => ({ ...m }));
         } else {
-            box.innerHTML = `<img src="${url}" alt="확대 사진">`;
+            $('modalDateLabel').innerText = `${activeDateStr} 새 기록`;
+            $('journalContent').value = '';$('locInput').value = '';
+            selectedMood = ''; selectedWeather = '';
         }
-        document.getElementById('lightbox').classList.add('active');
+        document.querySelectorAll('#moodChips .chip-btn').forEach(b => b.classList.toggle('selected', b.dataset.val === selectedMood));
+        document.querySelectorAll('#weatherChips .chip-btn').forEach(b => b.classList.toggle('selected', b.dataset.val === selectedWeather));
+        renderPreviewThumbs();
+        $('entryModal').classList.add('active');
+    }
+
+    function closeEntryModal() {
+        $('entryModal').classList.remove('active');
+        currentEditingId = null;
+        if (isRecording) stopSpeech();
+    }
+
+    function fetchCurrentLocation() {
+        if (!navigator.geolocation) return;
+        $('locInput').placeholder = "위치 확인 중…";
+        navigator.geolocation.getCurrentPosition(pos => {
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`)
+                .then(r => r.json())
+                .then(data => {
+                    const a = data.address || {};
+                    $('locInput').value = `${a.city || a.province || ''} ${a.borough || a.district || ''}`.trim() || '서울';
+                }).catch(() => $('locInput').value = '대한민국');
+        }, () => $('locInput').value = '위치 확인 불가', { timeout: 6000 });
+    }
+
+    function toggleSpeech() { if (isRecording) stopSpeech(); else startSpeech(); }
+    function startSpeech() {
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec) { alert("음성 인식을 지원하지 않는 브라우저입니다."); return; }
+        try {
+            if (recognition) recognition.abort();
+            recognition = new SpeechRec();
+            recognition.lang = 'ko-KR'; recognition.continuous = true; recognition.interimResults = true;
+            baseSpeechText = $('journalContent').value;
+            recognition.onstart = () => { isRecording = true; $('voiceBtn').classList.add('recording'); };
+            recognition.onresult = e => {
+                let interim = '', finalStr = '';
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    if (e.results[i].isFinal) finalStr += e.results[i][0].transcript;
+                    else interim += e.results[i][0].transcript;
+                }
+                $('journalContent').value = baseSpeechText + (finalStr ? ' ' + finalStr : '') + interim;
+            };
+            recognition.onerror = stopSpeech; recognition.onend = stopSpeech;
+            recognition.start();
+        } catch (err) { stopSpeech(); }
+    }
+    function stopSpeech() {
+        if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
+        isRecording = false;
+        $('voiceBtn')?.classList.remove('recording');
+    }
+
+    function toggleSearch(show) {
+        if (show) { $('searchModal').classList.add('active');$('searchInput').focus(); }
+        else { $('searchModal').classList.remove('active'); document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search')); }
+    }
+    function onSearch() {
+        const q = $('searchInput').value.trim().toLowerCase();
+        const box = $('searchResults'); box.innerHTML = '';
+        document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('has-search'));
+        if (!q) return;
+
+        const matched = journalDB.filter(e => !e.deleted && (e.content.toLowerCase().includes(q) || e.location.toLowerCase().includes(q)));
+        for (const e of matched) {
+            box.innerHTML += `
+                <div class="search-item" onclick="selectDate('${e.date}'); toggleSearch(false);">
+                    <strong>${e.date} (${formatDisplayTime(e.time)})</strong>: ${e.content.substring(0, 40)}…
+                </div>
+            `;
+            const cell = document.querySelector(`.cal-cell[data-date="${e.date}"]`);
+            if (cell) cell.classList.add('has-search');
+        }
+    }
+
+    function viewMedia(url, type, poster = '') {
+        const box = $('lightboxContent');
+        box.innerHTML = '';
+        if (type === 'video') {
+            box.innerHTML = `<video src="${url}" controls autoplay playsinline style="max-width:95%; max-height:85vh; border-radius:8px;"></video>`;
+        } else {
+            box.innerHTML = `<img src="${url}" alt="확대">`;
+        }
+        $('lightbox').classList.add('active');
     }
 
     function closeLightbox(e) {
         if (e.target.tagName === 'VIDEO' || e.target.tagName === 'IMG') return;
         forceCloseLightbox();
     }
-
     function forceCloseLightbox() {
-        const box = document.getElementById('lightboxContent');
-        const video = box.querySelector('video');
-        if (video) { video.pause(); video.src = ""; }
-        box.innerHTML = '';
-        document.getElementById('lightbox').classList.remove('active');
+        const v = $('lightboxContent').querySelector('video');
+        if (v) { v.pause(); v.src = ''; }
+        $('lightboxContent').innerHTML = '';$('lightbox').classList.remove('active');
     }
 
-    function openBackupSheet() {
-        document.getElementById('backupModal').classList.add('active');
-    }
+    function openBackupSheet() { updateStorageUI(); $('backupModal').classList.add('active'); }
+    function closeBackupSheet() { $('backupModal').classList.remove('active'); }
 
-    function closeBackupSheet() {
-        document.getElementById('backupModal').classList.remove('active');
-    }
-
-    function forceAppUpdate() {
-        if (confirm("최신 버전(v2.4)으로 강제 업데이트하고 화면을 새로고침할까요?")) {
-            localStorage.setItem('myDiaryBuildVer', APP_CURRENT_VERSION);
-            if ('caches' in window) {
-                caches.keys().then(names => {
-                    names.forEach(name => caches.delete(name));
-                });
-            }
-            window.location.href = window.location.pathname + '?v=' + Date.now();
-        }
+    function configureCloud() {
+        const val = prompt('Code.gs의 setupDiary 실행 로그에 표시된 연결 암호를 입력하세요:', token());
+        if (val === null) return;
+        localStorage.setItem('myDiaryToken', val.trim());
+        syncNow();
     }
 
     function exportBackupData() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(journalDB, null, 2));
-        const dlAnchor = document.createElement('a');
-        dlAnchor.setAttribute("href", dataStr);
-        dlAnchor.setAttribute("download", `my_diary_backup_${getLocalIsoDate(new Date())}.json`);
-        document.body.appendChild(dlAnchor);
-        dlAnchor.click();
-        dlAnchor.remove();
-        closeBackupSheet();
+        const blob = new Blob([JSON.stringify(journalDB, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `diary_backup_${getLocalIsoDate(new Date())}.json`;
+        a.click();
     }
 
     function importBackupData(e) {
         const file = e.target.files[0];
+        e.target.value = '';
         if (!file) return;
-
         const reader = new FileReader();
-        reader.onload = async (event) => {
+        reader.onload = async ev => {
             try {
-                const imported = JSON.parse(event.target.result);
-                if (!Array.isArray(imported)) throw new Error("형식 오류");
-
-                if (confirm(`가져온 파일에서 총 ${imported.length}개의 일기를 확인했습니다. 기존 일기와 병합하여 복원할까요?`)) {
-                    const map = new Map(journalDB.map(item => [item.id, item]));
-                    imported.forEach(item => {
-                        if (item && item.id) map.set(item.id, item);
-                    });
-
-                    journalDB = Array.from(map.values());
-                    journalDB.sort((a, b) => ((b.date || '') + ' ' + (b.time || '')).localeCompare((a.date || '') + ' ' + (a.time || '')));
-
-                    await saveToIndexedDB(journalDB);
-                    saveToLocalStorage(journalDB);
+                const list = JSON.parse(ev.target.result);
+                if (Array.isArray(list)) {
+                    for (const item of list) await putItem(IDB_STORE, item);
+                    journalDB = (await readAll(IDB_STORE)).sort((a, b) => (b.date + ' ' + (b.time || '')).localeCompare(a.date + ' ' + (a.time || '')));
                     renderCalendar();
                     renderTimeline();
                     alert("데이터 복원이 완료되었습니다.");
                     closeBackupSheet();
                 }
-            } catch (err) {
-                alert("올바른 백업 JSON 파일이 아닙니다.");
-            }
+            } catch (err) { alert("올바른 백업 파일이 아닙니다."); }
         };
         reader.readAsText(file);
-        e.target.value = '';
     }
 
     init();
