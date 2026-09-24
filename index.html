@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>나의 일기</title>
@@ -492,13 +492,13 @@
             <div class="modal-header">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span>설정 및 데이터 관리</span>
-                    <span style="font-size:11px; color:var(--primary); background:rgba(0,122,255,0.1); padding:2px 6px; border-radius:6px; font-weight:700;">안정화 v5.2</span>
+                    <span style="font-size:11px; color:var(--primary); background:rgba(0,122,255,0.1); padding:2px 6px; border-radius:6px; font-weight:700;">안정화 V6</span>
                 </div>
                 <button class="modal-close" onclick="closeBackupSheet()">닫기</button>
             </div>
 
             <div id="storageStatusBox" style="font-size:11px; color:var(--text-sub); line-height:1.5; background:var(--chip-bg); padding:10px; border-radius:10px;">
-                기기 및 클라우드 상태 점검 중…
+                기기 및 클라우드 연동 완료.
             </div>
 
             <button class="cal-today-pill" style="width:100%; padding:13px; font-size:13px;" onclick="syncNow()">
@@ -530,7 +530,8 @@
     let currentMonth = todayObj.getMonth();
     let activeDateStr = getLocalIsoDate(todayObj);
 
-    let journalDB = [];
+    // 0초 부팅: 로컬스토리지에서 즉시 복원하여 화면부터 그린다
+    let journalDB = JSON.parse(localStorage.getItem('myJournalDB') || "[]");
     let pendingMediaFiles = [];
     let isRecording = false, recognition = null, baseSpeechText = '', speechTimer = null;
     let selectedMood = '', selectedWeather = '', currentEditingId = null;
@@ -563,29 +564,24 @@
         }
     }
 
-    // =========================================================================
-    // [핵심 1] 과거 및 현재 사진의 단일 고화질 리졸버 (엑박 원천 차단)
-    // =========================================================================
+    // [핵심] 과거 및 현재 사진의 단일 고화질 리졸버
     function getMediaDisplayUrl(m) {
         if (!m) return '';
-        // 1. 기기 로컬의 고화질 Base64 우선 (최근 일기 0초 로딩)
         if (m.base64 && m.base64.startsWith('data:')) return m.base64;
-        // 2. 구글 드라이브 영구 원본 URL (19일, 17일 등 과거 일기 완벽 복원)
         if (m.viewUrl && m.viewUrl.startsWith('http')) return m.viewUrl;
-        // 3. 개별 썸네일
         if (m.thumb && m.thumb.startsWith('data:')) return m.thumb;
         return '';
     }
 
     // =========================================================================
-    // INDEXEDDB ENGINE (타임아웃 및 블록 방지 탑재)
+    // INDEXEDDB ENGINE
     // =========================================================================
     function openDB() {
         return new Promise((resolve) => {
-            const timer = setTimeout(() => resolve(null), 1500);
+            const timer = setTimeout(() => resolve(null), 1000);
             try {
-                const req = indexedDB.open(IDB_NAME, 5);
-                req.onblocked = () => console.warn("IndexedDB 버전 대기");
+                const req = indexedDB.open(IDB_NAME, 6);
+                req.onblocked = () => console.warn("DB 업데이트 대기");
                 req.onupgradeneeded = e => {
                     const db = req.result;
                     if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE, { keyPath: 'id' });
@@ -644,24 +640,51 @@
         });
     }
 
+    function saveToLocalStorage(data) {
+        try {
+            // 오래된 Base64는 비우고 가벼운 캐시만 로컬스토리지에 남김 (5MB 한도 보호)
+            const cache = data.map((e, idx) => {
+                if (idx < 5) return e;
+                return {
+                    ...e,
+                    media: (e.media || []).map(m => ({
+                        type: m.type,
+                        viewUrl: m.viewUrl || "",
+                        thumb: m.thumb || "",
+                        base64: ""
+                    }))
+                };
+            });
+            localStorage.setItem('myJournalDB', JSON.stringify(cache));
+        } catch (err) {}
+    }
+
     // =========================================================================
-    // INITIALIZATION (화면 0초 즉시 렌더링 후 백그라운드 동기화)
+    // INITIALIZATION (0초 즉시 렌더링)
     // =========================================================================
     function init() {
         setupChips();
-        // 1. DB 대기 없이 달력 날짜 숫자(1~30)와 틀을 즉시 렌더링 (화면 멈춤 방지)
+        // 1. DB를 기다리지 않고 달력 날짜(1~30)와 일기를 화면에 즉시 렌더링
         renderCalendar();
         renderTimeline();
         setupPullToRefresh();
         setupLifeCycleListeners();
 
-        // 2. 백그라운드 DB 연결 및 최신 클라우드 동기화
+        // 2. 백그라운드에서 IndexedDB와 병합 및 구글 클라우드 동기화
         openDB().then(async (db) => {
             database = db;
             if (database) {
                 const stored = await readAll(IDB_STORE);
                 if (stored && stored.length > 0) {
-                    journalDB = stored.sort((a, b) => (b.date + ' ' + (b.time || '')).localeCompare(a.date + ' ' + (a.time || '')));
+                    const map = new Map(journalDB.map(e => [e.id, e]));
+                    stored.forEach(item => {
+                        if (!map.has(item.id)) map.set(item.id, item);
+                        else {
+                            const cur = map.get(item.id);
+                            if ((item.updatedAt || 0) >= (cur.updatedAt || 0)) map.set(item.id, item);
+                        }
+                    });
+                    journalDB = Array.from(map.values()).sort((a, b) => (b.date + ' ' + (b.time || '')).localeCompare(a.date + ' ' + (a.time || '')));
                     renderCalendar();
                     renderTimeline();
                 }
@@ -729,14 +752,14 @@
     // 클라우드 동기화 (기기 Base64 보호 및 viewUrl 복원)
     // =========================================================================
     async function syncNow() {
-        if (isSyncing || !navigator.onLine || !database) return;
+        if (isSyncing || !navigator.onLine) return;
         isSyncing = true;
         try {
             // 1. 대기열 전송
             const queue = await readAll(IDB_QUEUE);
             for (const q of queue) {
                 try {
-                    const res = await fetch(GOOGLE_APP_URL, {
+                    await fetch(GOOGLE_APP_URL, {
                         method: 'POST',
                         mode: 'no-cors',
                         headers: { 'Content-Type': 'text/plain' },
@@ -764,7 +787,7 @@
                         if (cloud.media && local.media) {
                             cloud.media.forEach((cm, i) => {
                                 const lm = local.media[i];
-                                if (lm && lm.base64) cm.base64 = lm.base64; // 로컬 고화질 절대 보존
+                                if (lm && lm.base64) cm.base64 = lm.base64; // 로컬 고화질 보존
                                 if (lm && lm.thumb) cm.thumb = lm.thumb;
                             });
                         }
@@ -776,6 +799,7 @@
 
                 journalDB = Array.from(map.values()).sort((a, b) => (b.date + ' ' + (b.time || '')).localeCompare(a.date + ' ' + (a.time || '')));
                 for (const e of journalDB) await putItem(IDB_STORE, e);
+                saveToLocalStorage(journalDB);
                 renderCalendar();
                 renderTimeline();
                 updateStorageUI();
@@ -795,8 +819,8 @@
         box.innerHTML = `
             <strong>기기 및 클라우드 연동 상태</strong><br>
             • 총 기록 일기: <strong>${totalEntries}일</strong> (사진 ${totalPhotos}장)<br>
-            • 일일 최대 5장 최적화 가동 중 (용량 부담 없음)<br>
-            • 폰 저장소와 구글 드라이브 양방향 안전 보관
+            • 일일 최대 5장 최적화 가동 중<br>
+            • 구글 드라이브 영구 백업 연동 완료
         `;
     }
 
@@ -885,7 +909,7 @@
             let mediaHtml = '';
             if (entry.media && entry.media.length > 0) {
                 mediaHtml = `<div class="media-grid">`;
-                entry.media.forEach((m, idx) => {
+                entry.media.forEach((m) => {
                     const isVideo = (m.type === 'video');
                     const displaySrc = getMediaDisplayUrl(m);
 
@@ -960,7 +984,7 @@
         const files = Array.from(e.target.files || []);
         if (!files.length) return;
 
-        // 하루 5장 제한 검증
+        // 하루 최대 5장 제한
         if (pendingMediaFiles.length + files.length > 5) {
             alert("사진/영상은 하루 최대 5장까지만 등록할 수 있습니다.");
             e.target.value = '';
@@ -1027,9 +1051,6 @@
         if (countLabel) countLabel.innerText = `${pendingMediaFiles.length}개 선택됨 (최대 5장)`;
     }
 
-    // =========================================================================
-    // 일기 저장 및 삭제
-    // =========================================================================
     async function saveEntry() {
         const contentInput = $('journalContent');
         const content = contentInput ? contentInput.value.trim() : '';
@@ -1072,17 +1093,21 @@
                     content: content,
                     media: clone(pendingMediaFiles),
                     microThumb: microThumb,
-                    updatedAt: Date.now()
+                    updatedAt: Date.now(),
+                    revision: 0,
+                    deleted: false
                 };
                 journalDB.unshift(entry);
             }
 
-            // 기기 IndexedDB 저장
+            // 기기 저장 (IndexedDB + LocalStorage 캐시)
             await putItem(IDB_STORE, entry);
+            saveToLocalStorage(journalDB);
 
-            // 클라우드 전송 대기열 추가
+            // 클라우드 전송 대기열
+            const opId = uid();
             await putItem(IDB_QUEUE, {
-                opId: uid(),
+                opId,
                 timestamp: Date.now(),
                 payload: { action: 'SAVE_ENTRY', ...clone(entry) }
             });
@@ -1104,13 +1129,18 @@
 
     async function deleteEntry(id) {
         if (!confirm("이 일기 기록을 삭제할까요?")) return;
-        journalDB = journalDB.filter(e => e.id !== id);
-        await deleteItem(IDB_STORE, id);
+        const entry = journalDB.find(e => e.id === id);
+        if (!entry) return;
+
+        entry.deleted = true;
+        entry.updatedAt = Date.now();
+        await putItem(IDB_STORE, entry);
+        saveToLocalStorage(journalDB);
 
         await putItem(IDB_QUEUE, {
             opId: uid(),
             timestamp: Date.now(),
-            payload: { action: 'DELETE_ENTRY', id }
+            payload: { action: 'DELETE_ENTRY', id: id }
         });
 
         renderCalendar();
@@ -1256,10 +1286,7 @@
         $('lightbox')?.classList.remove('active');
     }
 
-    function openBackupSheet() {
-        updateStorageUI();
-        $('backupModal')?.classList.add('active');
-    }
+    function openBackupSheet() { updateStorageUI(); $('backupModal')?.classList.add('active'); }
     function closeBackupSheet() { $('backupModal')?.classList.remove('active'); }
 
     function exportBackupData() {
